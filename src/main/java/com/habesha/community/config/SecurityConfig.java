@@ -26,12 +26,8 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
- * Configures Spring Security for the application. This configuration
- * defines the authentication manager, password encoder and the
- * security filter chain. JWT tokens are validated via the
- * {@link JwtAuthenticationFilter} and endpoint access is granted
- * based on user roles. CORS is enabled globally using properties
- * defined in {@code application.properties}.
+ * Spring Security configuration with JWT auth and CORS configured
+ * for Netlify frontend + local development.
  */
 @Configuration
 @EnableWebSecurity
@@ -45,20 +41,19 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // CORS preflight
-                        .requestMatchers("/auth/**", "/swagger-ui.html", "/v3/api-docs/**", "/swagger-ui/**")
-                        .permitAll()
-                        .requestMatchers(HttpMethod.GET, "/travel/**", "/rentals/**", "/services/**", "/events/**",
-                                "/ads/**")
-                        .permitAll()
-                        .requestMatchers("/payments/webhook").permitAll()
-                        .anyRequest().authenticated());
+            .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authenticationProvider(authenticationProvider())
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // CORS preflight
+                .requestMatchers("/auth/**", "/swagger-ui.html", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
+                .requestMatchers(HttpMethod.GET,
+                        "/travel/**", "/rentals/**", "/services/**", "/events/**", "/ads/**").permitAll()
+                .requestMatchers("/payments/webhook").permitAll()
+                .anyRequest().authenticated()
+            );
 
         return http.build();
     }
@@ -81,19 +76,30 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+    /**
+     * CORS: allow Netlify site + localhost.
+     * - Production: https://habesha-community-frontend.netlify.app
+     * - Local: http://localhost:3000 and any localhost port
+     * - Optional: https://*.netlify.app (enables Netlify preview deploys)
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-     config.setAllowedOriginPatterns(List.of("http://localhost:*")); // Accept all localhost ports
+
+        config.setAllowedOriginPatterns(List.of(
+            "https://habesha-community-frontend.netlify.app",
+            "https://*.netlify.app",          // (optional) allow Netlify previews
+            "http://localhost:3000",
+            "http://localhost:*"
+        ));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-        config.setExposedHeaders(List.of("Authorization"));
-        config.setAllowCredentials(true); // 💥 this is key!
+        config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("*"));
+        config.setAllowCredentials(true); // required when sending cookies/Authorization
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
     }
-
 }

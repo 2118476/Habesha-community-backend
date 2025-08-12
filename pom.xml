@@ -87,6 +87,14 @@
             <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
         </dependency>
+
+<dependency>
+  <groupId>org.postgresql</groupId>
+  <artifactId>postgresql</artifactId>
+  <scope>runtime</scope>
+</dependency>
+
+
         <!-- Twilio SDK for SMS integration -->
         <dependency>
             <groupId>com.twilio.sdk</groupId>
