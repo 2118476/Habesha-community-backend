@@ -1,0 +1,10 @@
+﻿target/
+*.log
+.idea/
+*.iml
+.vscode/
+.mvn/wrapper/maven-wrapper.jar
+.env
+.env.*
+src/main/resources/application.properties
+src/main/resources/application.yml
