@@ -21,7 +21,6 @@ RUN addgroup -S spring && adduser -S spring -G spring
 USER spring
 
 # Render sets PORT; Spring Boot reads it via application.properties
-ENV PORT=8080
 ENV JAVA_OPTS=""
 
 # Copy the fat jar from the build stage
