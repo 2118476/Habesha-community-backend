@@ -49,6 +49,23 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     }
 
     /**
+     * Return all messages involving the given user sorted by send time
+     * descending. A message is considered to involve the user if
+     * either the sender or the recipient is the specified user. This
+     * method is used to build thread summaries for dashboard inbox
+     * previews.
+     *
+     * @param userId the id of the user
+     * @return list of messages sorted descending by sentAt
+     */
+    @Query("""
+        select m from Message m
+         where m.sender.id = :userId or m.recipient.id = :userId
+         order by m.sentAt desc
+    """)
+    List<Message> findRecentMessagesForUser(Long userId);
+
+    /**
      * Find unread counts grouped by sender for the given recipient.
      */
     @Query("""

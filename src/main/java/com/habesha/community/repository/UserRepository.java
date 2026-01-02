@@ -17,6 +17,19 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findByRole(Role role);
 
+    /**
+     * Find a single user by their unique username/handle.
+     */
+    Optional<User> findByUsername(String username);
+
+    /**
+     * Lookup a user by their reset password token.  This is used
+     * during password reset flows to retrieve the appropriate user
+     * given a token that was previously generated and stored on the
+     * user record.
+     */
+    Optional<User> findByResetPasswordToken(String resetPasswordToken);
+
     // ✅ Add this line
     List<User> findByNameContainingIgnoreCaseOrUsernameContainingIgnoreCase(String name, String username);
 }

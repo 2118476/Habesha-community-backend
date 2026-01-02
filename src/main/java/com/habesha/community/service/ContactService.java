@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 public class ContactService {
     private final ContactRequestRepository contactRepo;
     private final UserRepository userRepo;
+    private final MessageRepository messageRepo;
 
     private User currentUser() {
         var email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -56,8 +57,12 @@ public class ContactService {
                 .requesterName(req.getRequester().getName() != null && !req.getRequester().getName().isBlank()
                         ? req.getRequester().getName()
                         : req.getRequester().getUsername())
+                .requesterUsername(req.getRequester().getUsername())
+                .requesterAvatarUrl(req.getRequester().getAvatarUrl())
                 .targetId(req.getTarget().getId())
                 .targetName(me.getName() != null && !me.getName().isBlank() ? me.getName() : me.getUsername())
+                .targetUsername(me.getUsername())
+                .targetAvatarUrl(me.getAvatarUrl())
                 .type(req.getType())
                 .status(req.getStatus())
                 .createdAt(req.getCreatedAt())
@@ -77,10 +82,14 @@ public class ContactService {
                 .id(req.getId())
                 .requesterId(me.getId())
                 .requesterName(me.getName() != null && !me.getName().isBlank() ? me.getName() : me.getUsername())
+                .requesterUsername(me.getUsername())
+                .requesterAvatarUrl(me.getAvatarUrl())
                 .targetId(req.getTarget().getId())
                 .targetName(req.getTarget().getName() != null && !req.getTarget().getName().isBlank()
                         ? req.getTarget().getName()
                         : req.getTarget().getUsername())
+                .targetUsername(req.getTarget().getUsername())
+                .targetAvatarUrl(req.getTarget().getAvatarUrl())
                 .type(req.getType())
                 .status(req.getStatus())
                 .createdAt(req.getCreatedAt())
@@ -90,10 +99,11 @@ public class ContactService {
     /**
      * Respond to a contact request by either accepting or rejecting
      * it.  Only the target (recipient) of the request may respond.
-     * When accepted, the status is set to APPROVED; when rejected,
-     * the status is set to REJECTED.  If the request is not pending
-     * or does not belong to the current user as the target, an
-     * exception is thrown.
+     * When accepted, the status is set to APPROVED and the requested
+     * contact information is sent via a direct message to the requester.
+     * When rejected, the status is set to REJECTED.  If the request is
+     * not pending or does not belong to the current user as the target,
+     * an exception is thrown.
      */
     public void respond(Long requestId, boolean accept) {
         var reqOpt = contactRepo.findById(requestId);
@@ -112,5 +122,44 @@ public class ContactService {
         }
         req.setStatus(accept ? ContactRequestStatus.APPROVED : ContactRequestStatus.REJECTED);
         contactRepo.save(req);
+        
+        // If approved, send the contact information via message
+        if (accept) {
+            sendContactInfoMessage(req);
+        }
+    }
+    
+    /**
+     * Send a direct message to the requester with the approved contact information.
+     */
+    private void sendContactInfoMessage(ContactRequest req) {
+        User target = req.getTarget();
+        User requester = req.getRequester();
+        
+        String contactInfo;
+        if (req.getType() == ContactType.EMAIL) {
+            contactInfo = target.getEmail() != null ? target.getEmail() : "Not available";
+        } else if (req.getType() == ContactType.PHONE) {
+            contactInfo = target.getPhone() != null ? target.getPhone() : "Not available";
+        } else {
+            return; // Unknown type
+        }
+        
+        String messageContent = String.format(
+            "✅ %s has approved your request to view their %s:\n\n%s",
+            target.getName() != null && !target.getName().isBlank() ? target.getName() : target.getUsername(),
+            req.getType().toString().toLowerCase(),
+            contactInfo
+        );
+        
+        Message message = Message.builder()
+            .sender(target)
+            .recipient(requester)
+            .content(messageContent)
+            .readByRecipient(false)
+            .viaSms(false)
+            .build();
+        
+        messageRepo.save(message);
     }
 }

@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -47,6 +48,10 @@ private User poster;
     private boolean featured;
 
     private LocalDateTime createdAt;
+
+    @OneToMany(mappedBy = "ad", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sortIndex ASC")
+    private List<AdPhoto> photos;
 
     @PrePersist
     public void prePersist() {

@@ -1,8 +1,8 @@
 package com.habesha.community.repository;
 
 import com.habesha.community.model.FriendRequest;
-import com.habesha.community.model.User;
 import com.habesha.community.model.FriendRequestStatus;
+import com.habesha.community.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -18,4 +18,6 @@ public interface FriendRequestRepository extends JpaRepository<FriendRequest, Lo
 
     List<FriendRequest> findBySenderOrReceiverAndStatus(User sender, User receiver, FriendRequestStatus status);
 
+    // ✅ Counts incoming (receiver-side) pending requests for a given user id
+    long countByReceiver_IdAndStatus(Long receiverId, FriendRequestStatus status);
 }

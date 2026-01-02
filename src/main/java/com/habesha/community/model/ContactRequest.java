@@ -6,6 +6,8 @@ import java.time.LocalDateTime;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 @Entity
+@Table(name = "contact_request",
+       uniqueConstraints = @UniqueConstraint(columnNames = {"requester_id", "target_id", "type", "status"}))
 public class ContactRequest {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

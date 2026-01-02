@@ -28,6 +28,11 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final UserSessionService userSessionService;
+
+    // Provide access to user conversions so we can include a UserResponse
+    // in the authentication response.
+    private final com.habesha.community.service.UserService userService;
 
     @Transactional
     public AuthenticationResponse register(RegisterRequest request) {
@@ -46,14 +51,27 @@ public class AuthenticationService {
                 .build();
         userRepository.save(user);
         String token = jwtService.generateToken(user);
-        return new AuthenticationResponse(token);
+        
+        // Create session for this login
+        userSessionService.createOrUpdateSession(user, token);
+        
+        return new AuthenticationResponse(token, userService.toResponse(user));
     }
 
     public AuthenticationResponse login(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
         User principal = (User) authentication.getPrincipal();
+        // Record the timestamp of this successful login and mark the
+        // user as active.  Persist the updates before issuing the JWT.
+        principal.setLastLoginAt(java.time.LocalDateTime.now());
+        principal.setLastActiveAt(java.time.LocalDateTime.now());
+        userRepository.save(principal);
         String token = jwtService.generateToken(principal);
-        return new AuthenticationResponse(token);
+        
+        // Create session for this login
+        userSessionService.createOrUpdateSession(principal, token);
+        
+        return new AuthenticationResponse(token, userService.toResponse(principal));
     }
 }

@@ -23,4 +23,12 @@ public class TravelPostResponse {
     private String userName;       // prefer real name, fallback to username/email
     private String userUsername;   // username for linking if needed
     private String userAvatar;     // profileImageUrl
+
+    /**
+     * Unified summary of the user that posted this travel listing.
+     * Clients should use this property instead of the individual
+     * userId/userName/userUsername/userAvatar fields, which remain
+     * only for backwards compatibility.
+     */
+    private com.habesha.community.dto.UserSummaryDto postedBy;
 }

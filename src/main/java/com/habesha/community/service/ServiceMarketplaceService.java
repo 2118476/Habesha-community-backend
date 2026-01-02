@@ -60,7 +60,9 @@ public class ServiceMarketplaceService {
     }
 
     public List<ServiceOffer> listServices(Optional<String> category) {
-        return category.map(offerRepository::findByCategoryIgnoreCase).orElseGet(offerRepository::findAll);
+        return category
+                .map(offerRepository::findByCategoryIgnoreCaseOrderByCreatedAtDesc)
+                .orElseGet(offerRepository::findAllByOrderByCreatedAtDesc);
     }
 
     @Transactional

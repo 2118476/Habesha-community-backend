@@ -1,3 +1,4 @@
+// src/main/java/com/habesha/community/controller/FriendController.java
 package com.habesha.community.controller;
 
 import com.habesha.community.dto.*;
@@ -5,113 +6,109 @@ import com.habesha.community.model.User;
 import com.habesha.community.repository.UserRepository;
 import com.habesha.community.service.FriendService;
 import com.habesha.community.service.UserService;
+import com.habesha.community.dto.CancelFriendRequest;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
-/**
- * Endpoints for sending and managing friend requests.
- */
 @RestController
 @RequestMapping("/friends")
 @RequiredArgsConstructor
+@Validated
 public class FriendController {
 
     private final FriendService friendService;
     private final UserRepository userRepository;
     private final UserService userService;
 
-    /**
-     * Send a new friend request
-     */
+    /* ------------ Relationship primitives ------------ */
+
+    /** Current user's friends (paged). */
+    @GetMapping("/list")
+    public ResponseEntity<PagedResponse<UserSummaryDto>> listFriends(
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "50") @Min(1) @Max(200) int size) {
+        return ResponseEntity.ok(friendService.getFriendsPage(page, size));
+    }
+
+    /** Remove (unfriend) a user. */
+    @DeleteMapping("/{userId}")
+    public ResponseEntity<Void> removeFriend(@PathVariable Long userId) {
+        friendService.removeFriend(userId);
+        return ResponseEntity.ok().build();
+    }
+
+    /** Relationship status with a target user. */
+    @GetMapping("/status")
+    public ResponseEntity<RelationshipStatusResponse> getStatus(@RequestParam("userId") Long userId) {
+        return ResponseEntity.ok(friendService.getRelationshipStatusResponse(userId));
+    }
+
+    /* ------------ Requests ------------ */
+
+    /** Send a friend request. */
     @PostMapping("/request")
     public ResponseEntity<?> sendRequest(@RequestBody FriendRequestCreateRequest request) {
-        try {
-            friendService.sendRequest(request);
-            return ResponseEntity.ok().build();
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Failed to send friend request");
-        }
+        friendService.sendRequest(request);
+        return ResponseEntity.ok().build();
     }
 
-    /**
-     * Accept or reject a friend request
-     */
+    /** Accept or reject a request. */
     @PostMapping("/respond")
     public ResponseEntity<?> respondToRequest(@RequestBody FriendRequestActionRequest action) {
-        try {
-            friendService.respondToRequest(action);
-            return ResponseEntity.ok().build();
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Failed to respond to friend request");
-        }
+        friendService.respondToRequest(action);
+        return ResponseEntity.ok().build();
     }
 
-    /**
-     * Get a list of the current user's friends
-     */
-    @GetMapping("/list")
-    public ResponseEntity<?> listFriends() {
-        try {
-            List<SimpleUserDTO> friends = friendService.getFriends();
-            return ResponseEntity.ok(friends);
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Error retrieving friends");
-        }
+    /** Cancel an outgoing pending request. */
+    @PostMapping("/requests/cancel")
+    public ResponseEntity<?> cancelOutgoing(@RequestBody CancelFriendRequest request) {
+        friendService.cancelOutgoingRequest(request.getRequestId());
+        return ResponseEntity.ok().build();
     }
 
-    /**
-     * Get users by partial match on name or username
-     */
-    @GetMapping("/search")
-    public ResponseEntity<?> searchUsers(@RequestParam("query") String query) {
-        try {
-            if (query == null || query.trim().length() < 2) {
-                return ResponseEntity.badRequest().body("Search query must be at least 2 characters");
-            }
-
-            List<User> matches = userRepository
-                    .findByNameContainingIgnoreCaseOrUsernameContainingIgnoreCase(query, query);
-
-            List<SimpleUserDTO> results = matches.stream()
-                    .map(user -> new SimpleUserDTO(user.getId(), user.getName(), user.getEmail()))
-                    .collect(Collectors.toList());
-
-            return ResponseEntity.ok(results);
-
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Error searching users");
-        }
-    }
-
-    /**
-     * Get incoming friend requests
-     */
+    /** Incoming (received) pending requests (paged). */
     @GetMapping("/requests/incoming")
-    public ResponseEntity<?> getIncomingRequests() {
-        try {
-            return ResponseEntity.ok(friendService.getIncomingRequests());
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Error fetching incoming requests");
-        }
+    public ResponseEntity<PagedResponse<FriendRequestResponse>> incoming(
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "50") @Min(1) @Max(200) int size) {
+        return ResponseEntity.ok(friendService.getIncomingRequestsPage(page, size));
     }
 
-    /**
-     * Get outgoing friend requests
-     */
+    /** Outgoing (sent) pending requests (paged). */
     @GetMapping("/requests/outgoing")
-    public ResponseEntity<?> getOutgoingRequests() {
-        try {
-            return ResponseEntity.ok(friendService.getOutgoingRequests());
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Error fetching outgoing requests");
-        }
+    public ResponseEntity<PagedResponse<FriendRequestResponse>> outgoing(
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "50") @Min(1) @Max(200) int size) {
+        return ResponseEntity.ok(friendService.getOutgoingRequestsPage(page, size));
+    }
+
+    /* ------------ Discovery ------------ */
+
+    /** People you may know (ranked by mutual friends). */
+    @GetMapping("/suggestions")
+    public ResponseEntity<List<UserSummaryDto>> suggestions(
+            @RequestParam(defaultValue = "12") @Min(1) @Max(100) int limit) {
+        return ResponseEntity.ok(friendService.getFriendSuggestions(limit));
+    }
+
+    /** Mutual friends between current user and target. */
+    @GetMapping("/mutual/{userId}")
+    public ResponseEntity<List<UserSummaryDto>> mutual(@PathVariable Long userId) {
+        return ResponseEntity.ok(friendService.getMutualFriends(userId));
+    }
+
+    /** Search users (by name or username), returns summaries. */
+    @GetMapping("/search")
+    public ResponseEntity<PagedResponse<UserSummaryDto>> search(
+            @RequestParam("query") String query,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+        return ResponseEntity.ok(friendService.searchUsers(query, page, size));
     }
 }

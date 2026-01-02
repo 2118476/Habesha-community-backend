@@ -202,8 +202,11 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Split comma-separated patterns and convert to list
-        List<String> originPatterns = Arrays.asList(allowedOriginPatterns.split(","));
+        // Split comma-separated patterns, trim whitespace, and convert to list
+        List<String> originPatterns = Arrays.stream(allowedOriginPatterns.split(","))
+                .map(String::trim)
+                .filter(pattern -> !pattern.isEmpty())
+                .toList();
         config.setAllowedOriginPatterns(originPatterns);
         
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));

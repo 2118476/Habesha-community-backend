@@ -2,6 +2,7 @@ package com.habesha.community.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,9 +23,10 @@ public class TravelPost {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // who created the post
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
-    @JsonIgnore // prevent infinite recursion; we send user info via DTO instead
+    @JsonIgnore
     private User user;
 
     @Column(nullable = false)
@@ -33,13 +35,13 @@ public class TravelPost {
     @Column(nullable = false)
     private String destinationCity;
 
+    @NotNull
     @Column(nullable = false)
     private LocalDate travelDate;
 
-    @Column(length = 500)
+    @Column(columnDefinition = "TEXT")
     private String message;
 
-    @Column(length = 120)
     private String contactMethod;
 
     @Column(nullable = false, updatable = false)
