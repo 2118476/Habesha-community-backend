@@ -223,7 +223,8 @@ public class SecurityConfig {
             originPatterns = List.of(
                     "http://localhost:3000",
                     "http://localhost:3001",
-                    "https://*.netlify.app"
+                    "https://*.netlify.app",
+                    "https://habesha-community-frontend.netlify.app"
             );
         }
         
