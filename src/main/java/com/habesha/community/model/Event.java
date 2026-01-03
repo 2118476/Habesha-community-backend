@@ -38,7 +38,7 @@ public class Event {
 
     private LocalDate date;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 4000)
     private String description;
 
     private String imageUrl;

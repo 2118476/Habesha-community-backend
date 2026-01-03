@@ -56,6 +56,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
+        <!-- Flyway for database migrations -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
         <!-- Spring Security with JWT -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -86,19 +91,12 @@
             <version>1.18.30</version>
             <scope>provided</scope>
         </dependency>
-        <!-- Database driver for MySQL -->
+        <!-- Database driver for PostgreSQL -->
         <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
-
-<dependency>
-  <groupId>org.postgresql</groupId>
-  <artifactId>postgresql</artifactId>
-  <version>42.7.3</version>
-  <scope>runtime</scope>
-</dependency>
 
 
         <!-- Twilio SDK for SMS integration -->

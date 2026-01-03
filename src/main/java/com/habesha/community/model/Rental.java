@@ -37,7 +37,7 @@ public class Rental {
     @Column(length = 200)
     private String title;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 4000)
     private String description;
 
     @Column(length = 200)

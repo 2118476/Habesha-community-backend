@@ -39,7 +39,7 @@ public class ServiceOffer {
 
     private String title;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 4000)
     private String description;
 
     private String estimatedTime;

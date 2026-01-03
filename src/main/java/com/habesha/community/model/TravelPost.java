@@ -39,7 +39,7 @@ public class TravelPost {
     @Column(nullable = false)
     private LocalDate travelDate;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 4000)
     private String message;
 
     private String contactMethod;

@@ -38,9 +38,10 @@ public class Message {
     @JoinColumn(name = "recipient_id")
     private User recipient;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 4000)
     private String content;
 
+    @Builder.Default
     @Column(nullable = false)
     private boolean readByRecipient = false;
 
@@ -52,7 +53,8 @@ public class Message {
      * using the recipient's phone number.  Failed SMS attempts should
      * be logged separately for administrative troubleshooting.
      */
-    private boolean viaSms;
+    @Builder.Default
+    private boolean viaSms = false;
 
     private LocalDateTime sentAt;
 

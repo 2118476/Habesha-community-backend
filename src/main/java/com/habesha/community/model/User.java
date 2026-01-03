@@ -49,6 +49,7 @@ public class User implements UserDetails {
     @ElementCollection
     @CollectionTable(name = "user_badges", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "badge")
+    @Builder.Default
     private List<String> badges = new java.util.ArrayList<>();
 
     @Column(name = "notifications_seen_at")

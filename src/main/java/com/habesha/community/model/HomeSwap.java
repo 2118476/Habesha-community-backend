@@ -43,7 +43,7 @@ public class HomeSwap {
     @Column(nullable = false, length = 200)
     private String location;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 4000)
     private String description;
 
     @Column(name = "created_at", nullable = false, updatable = false)

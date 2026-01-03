@@ -36,7 +36,7 @@ private User poster;
 
     private String title;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 4000)
     private String description;
 
     private BigDecimal price;

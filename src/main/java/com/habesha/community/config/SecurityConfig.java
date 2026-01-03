@@ -2,6 +2,7 @@ package com.habesha.community.config;
 
 import com.habesha.community.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,6 +31,7 @@ import java.util.List;
  * Spring Security configuration with JWT auth and CORS configured
  * for Netlify frontend + local development.
  */
+@Slf4j
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -197,20 +199,35 @@ public class SecurityConfig {
     /**
      * CORS: Environment-driven configuration for allowed origins.
      * Supports comma-separated patterns from ALLOWED_ORIGIN_PATTERNS env var.
+     * Falls back to safe defaults if env var is missing or empty.
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Split comma-separated patterns, trim whitespace, and convert to list
-        List<String> originPatterns = Arrays.stream(allowedOriginPatterns.split(","))
-                .map(String::trim)
-                .filter(pattern -> !pattern.isEmpty())
-                .toList();
-        config.setAllowedOriginPatterns(originPatterns);
+        // Parse and validate origin patterns
+        List<String> originPatterns;
+        if (allowedOriginPatterns != null && !allowedOriginPatterns.trim().isEmpty()) {
+            originPatterns = Arrays.stream(allowedOriginPatterns.split(","))
+                    .map(String::trim)
+                    .filter(pattern -> !pattern.isEmpty())
+                    .toList();
+        } else {
+            // Fallback to safe defaults if env var is missing/empty
+            originPatterns = List.of(
+                    "http://localhost:3000",
+                    "https://*.netlify.app"
+            );
+        }
         
+        // Log CORS configuration for debugging (no secrets)
+        log.info("CORS Configuration - Allowed Origin Patterns: {}", originPatterns);
+        log.info("CORS Configuration - Allowed Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
+        log.info("CORS Configuration - Allow Credentials: true");
+        
+        config.setAllowedOriginPatterns(originPatterns);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "*"));
         config.setExposedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 
