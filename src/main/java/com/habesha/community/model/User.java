@@ -103,7 +103,7 @@ public class User implements UserDetails {
     // ===== Profile image blob (optional) =====
     @Lob
     @Basic(fetch = FetchType.LAZY)
-    @Column(name = "profile_image", columnDefinition = "LONGBLOB")
+    @Column(name = "profile_image")
     private byte[] profileImage;
 
     @Column(name = "profile_image_type", length = 100)
