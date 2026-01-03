@@ -53,26 +53,32 @@ public class SecurityConfig {
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(auth -> auth
+                // ----- CORS preflight - MUST be first -----
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                // ----- Public health and actuator endpoints -----
+                .requestMatchers(
+                        "/actuator/**",
+                        "/health"
+                ).permitAll()
+
+                // ----- Authentication endpoints -----
+                .requestMatchers("/auth/**").permitAll()
+
+                // ----- Public API documentation -----
+                .requestMatchers(
+                        "/swagger-ui.html",
+                        "/v3/api-docs/**",
+                        "/swagger-ui/**"
+                ).permitAll()
+
+                // ----- Payment webhooks -----
+                .requestMatchers("/payments/webhook").permitAll()
+
                 // ----- Settings & Contact & Block endpoints -----
                 .requestMatchers("/api/users/me/settings/**").authenticated()
                 .requestMatchers("/contact/**").authenticated()
                 .requestMatchers("/api/users/me/blocks/**").authenticated()
-
-                // ----- CORS preflight -----
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                // ----- Public / unauthenticated endpoints -----
-                .requestMatchers(
-                        "/auth/**",
-                        "/login",
-                        "/swagger-ui.html",
-                        "/v3/api-docs/**",
-                        "/swagger-ui/**",
-                        "/actuator/**"
-                ).permitAll()
-
-                .requestMatchers(HttpMethod.GET, "/health").permitAll()
-                .requestMatchers("/payments/webhook").permitAll()
 
                 // Public profile image read; delete requires auth
                 .requestMatchers(HttpMethod.GET, "/users/*/profile-image").permitAll()
@@ -216,6 +222,7 @@ public class SecurityConfig {
             // Fallback to safe defaults if env var is missing/empty
             originPatterns = List.of(
                     "http://localhost:3000",
+                    "http://localhost:3001",
                     "https://*.netlify.app"
             );
         }
@@ -227,9 +234,10 @@ public class SecurityConfig {
         
         config.setAllowedOriginPatterns(originPatterns);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "*"));
+        config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("*"));
         config.setAllowCredentials(true);
+        config.setMaxAge(3600L); // Cache preflight for 1 hour
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

@@ -21,7 +21,7 @@ public class ProfileImageController {
     private final UserService userService;
 
     /**
-     * Upload avatar into MySQL (BLOB). Accepts common field names.
+     * Upload avatar into PostgreSQL (BYTEA). Accepts common field names.
      */
     @PostMapping(
         path = "/me/profile-image",
