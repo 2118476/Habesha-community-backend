@@ -8,6 +8,7 @@ import com.habesha.community.repository.UserSessionRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -89,6 +91,9 @@ public class UserSessionService {
      * Create or update a session (called during login/authentication)
      */
     public UserSession createOrUpdateSession(User user, String token) {
+        log.debug("createOrUpdateSession: userId={}, email={}, ip={}, device={}",
+                user.getId(), user.getEmail(), getClientIp(), detectDevice());
+
         Optional<UserSession> existing = sessionRepo.findByToken(token);
         
         if (existing.isPresent()) {
@@ -96,6 +101,7 @@ public class UserSessionService {
             session.setLastSeen(LocalDateTime.now());
             session.setIp(getClientIp());
             session.setUserAgent(getUserAgent());
+            log.debug("Updating existing session id={} for userId={}", session.getId(), user.getId());
             return sessionRepo.save(session);
         }
         
@@ -108,6 +114,7 @@ public class UserSessionService {
                 .expiresAt(LocalDateTime.now().plusDays(30))
                 .build();
         
+        log.debug("Creating new session for userId={}", user.getId());
         return sessionRepo.save(newSession);
     }
 

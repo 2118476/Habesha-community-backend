@@ -9,9 +9,9 @@ import com.habesha.community.repository.UserRepository;
 import com.habesha.community.security.JwtService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
  * password is hashed using BCrypt.  On successful authentication a
  * signed JWT token is returned for subsequent requests.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthenticationService {
@@ -59,19 +60,36 @@ public class AuthenticationService {
     }
 
     public AuthenticationResponse login(LoginRequest request) {
-        Authentication authentication = authenticationManager.authenticate(
+        authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
-        User principal = (User) authentication.getPrincipal();
-        // Record the timestamp of this successful login and mark the
-        // user as active.  Persist the updates before issuing the JWT.
-        principal.setLastLoginAt(java.time.LocalDateTime.now());
-        principal.setLastActiveAt(java.time.LocalDateTime.now());
-        userRepository.save(principal);
+
+        // Re-load managed entity so save() works on a clean JPA-managed instance
+        User principal = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new IllegalStateException("Authenticated user not found in database"));
+
+        log.info("Login authenticated successfully for email={}, userId={}, role={}",
+                principal.getEmail(), principal.getId(), principal.getRole());
+
         String token = jwtService.generateToken(principal);
-        
-        // Create session for this login
-        userSessionService.createOrUpdateSession(principal, token);
-        
+
+        try {
+            principal.setLastLoginAt(java.time.LocalDateTime.now());
+            principal.setLastActiveAt(java.time.LocalDateTime.now());
+            userRepository.save(principal);
+            log.info("Updated login timestamps for email={}", principal.getEmail());
+        } catch (Exception e) {
+            log.warn("Login succeeded but failed to persist login timestamps for email={}: {}",
+                    principal.getEmail(), e.getMessage(), e);
+        }
+
+        try {
+            userSessionService.createOrUpdateSession(principal, token);
+            log.info("Created/updated session for email={}", principal.getEmail());
+        } catch (Exception e) {
+            log.warn("Login succeeded but failed to persist session for email={}: {}",
+                    principal.getEmail(), e.getMessage(), e);
+        }
+
         return new AuthenticationResponse(token, userService.toResponse(principal));
     }
 }
