@@ -34,6 +34,7 @@ public class UserService {
     private final FriendRequestRepository friendRequestRepository;
 
     /** Resolve the signed-in user entity via Spring Security (email is the username). */
+    @Transactional(readOnly = true)
     public Optional<User> getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated()) return Optional.empty();
@@ -229,6 +230,7 @@ public class UserService {
     // tiny DTO for streaming
     public static record UserImage(byte[] data, String contentType) {}
 
+    @Transactional(readOnly = true)
     public Optional<UserImage> getCurrentUserImage() {
         return getCurrentUser().map(u -> {
             if (u.getProfileImage() == null) return null;
@@ -236,6 +238,7 @@ public class UserService {
         });
     }
 
+    @Transactional(readOnly = true)
     public Optional<UserImage> getUserImageById(Long id) {
         return userRepository.findById(id).map(u -> {
             if (u.getProfileImage() == null) return null;

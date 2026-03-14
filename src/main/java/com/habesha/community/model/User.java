@@ -9,6 +9,9 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -102,9 +105,9 @@ public class User implements UserDetails {
     private LocalDateTime lastActiveAt;
 
     // ===== Profile image blob (optional) =====
-    @Lob
     @Basic(fetch = FetchType.LAZY)
-    @Column(name = "profile_image")
+    @JdbcTypeCode(SqlTypes.VARBINARY)
+    @Column(name = "profile_image", columnDefinition = "bytea")
     private byte[] profileImage;
 
     @Column(name = "profile_image_type", length = 100)
@@ -174,6 +177,6 @@ public class User implements UserDetails {
     private String dmPolicy;         // EVERYONE | FOAF | FRIENDS | NO_ONE
 
     // ===== Settings (notifications) =====
-    @Lob
+    @Column(name = "notifications_json", columnDefinition = "TEXT")
     private String notificationsJson; // JSON blob of notification categories
 }
