@@ -18,6 +18,10 @@ WORKDIR /app
 
 # (Optional) non-root user
 RUN addgroup -S spring && adduser -S spring -G spring
+
+# Create writable uploads directory owned by the spring user
+RUN mkdir -p /app/uploads && chown -R spring:spring /app/uploads
+
 USER spring
 
 # Render sets PORT; Spring Boot reads it via application.properties
