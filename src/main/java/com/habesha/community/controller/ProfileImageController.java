@@ -1,9 +1,9 @@
 package com.habesha.community.controller;
 
 import com.habesha.community.dto.UserResponse;
-import com.habesha.community.model.User;
 import com.habesha.community.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
+@Slf4j
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
@@ -56,7 +57,15 @@ public class ProfileImageController {
             throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Max 10MB");
         }
 
-        UserResponse updated = userService.updateProfileImage(bytes, contentType);
+        UserResponse updated;
+        try {
+            updated = userService.updateProfileImage(bytes, contentType);
+        } catch (Exception e) {
+            log.error("Failed to save profile image: type={}, size={}, error={}",
+                    contentType, bytes.length, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to save profile image: " + e.getMessage());
+        }
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("ok", true);

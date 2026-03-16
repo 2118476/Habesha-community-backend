@@ -9,9 +9,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -105,8 +102,6 @@ public class User implements UserDetails {
     private LocalDateTime lastActiveAt;
 
     // ===== Profile image blob (optional) =====
-    @Basic(fetch = FetchType.LAZY)
-    @JdbcTypeCode(SqlTypes.VARBINARY)
     @Column(name = "profile_image", columnDefinition = "bytea")
     private byte[] profileImage;
 

@@ -80,8 +80,9 @@ public class SecurityConfig {
                 .requestMatchers("/contact/**").authenticated()
                 .requestMatchers("/api/users/me/blocks/**").authenticated()
 
-                // Public profile image read; delete requires auth
+                // Public profile image read; upload and delete require auth
                 .requestMatchers(HttpMethod.GET, "/users/*/profile-image").permitAll()
+                .requestMatchers(HttpMethod.POST, "/users/me/profile-image").authenticated()
                 .requestMatchers(HttpMethod.DELETE, "/users/me/profile-image").authenticated()
 
                 // ---------- PUBLIC READ-ONLY CONTENT ----------

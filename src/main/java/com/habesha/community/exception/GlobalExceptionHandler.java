@@ -5,6 +5,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -141,7 +143,65 @@ public class GlobalExceptionHandler {
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.UNAUTHORIZED.value())
                 .error("Unauthorized")
-                .message("Invalid credentials")
+                .message("Invalid email or password.")
+                .path(request.getDescription(false).replace("uri=", ""))
+                .correlationId(correlationId)
+                .build();
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+    }
+
+    /**
+     * Handle internal authentication service exceptions (e.g. DB errors during auth)
+     */
+    @ExceptionHandler(InternalAuthenticationServiceException.class)
+    public ResponseEntity<ErrorResponse> handleInternalAuthException(
+            InternalAuthenticationServiceException ex,
+            WebRequest request) {
+        
+        String correlationId = generateCorrelationId();
+        log.error("[{}] Internal authentication error: {}", correlationId, ex.getMessage(), ex);
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.UNAUTHORIZED.value())
+                .error("Unauthorized")
+                .message("Authentication failed. Please check your credentials and try again.")
+                .path(request.getDescription(false).replace("uri=", ""))
+                .correlationId(correlationId)
+                .build();
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+    }
+
+    /**
+     * Catch-all for any other Spring Security AuthenticationException subtypes
+     * (DisabledException, LockedException, AccountExpiredException, etc.)
+     */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthenticationException(
+            AuthenticationException ex,
+            WebRequest request) {
+        
+        String correlationId = generateCorrelationId();
+        log.warn("[{}] Authentication failed ({}): {}", correlationId, ex.getClass().getSimpleName(), ex.getMessage());
+
+        String message;
+        if (ex.getClass().getSimpleName().contains("Disabled")) {
+            message = "Your account is disabled. Please contact support.";
+        } else if (ex.getClass().getSimpleName().contains("Locked")) {
+            message = "Your account is locked. Please contact support.";
+        } else if (ex.getClass().getSimpleName().contains("Expired")) {
+            message = "Your account or credentials have expired. Please reset your password.";
+        } else {
+            message = "Authentication failed. Please check your credentials.";
+        }
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.UNAUTHORIZED.value())
+                .error("Unauthorized")
+                .message(message)
                 .path(request.getDescription(false).replace("uri=", ""))
                 .correlationId(correlationId)
                 .build();
@@ -186,7 +246,12 @@ public class GlobalExceptionHandler {
             WebRequest request) {
         
         String correlationId = generateCorrelationId();
-        log.error("[{}] Unexpected error: ", correlationId, ex);
+        log.error("[{}] Unexpected error on path={}: type={}, message={}", 
+                correlationId, 
+                request.getDescription(false).replace("uri=", ""),
+                ex.getClass().getName(),
+                ex.getMessage(), 
+                ex);
 
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())

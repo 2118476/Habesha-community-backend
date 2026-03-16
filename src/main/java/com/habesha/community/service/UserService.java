@@ -44,6 +44,11 @@ public class UserService {
         return userRepository.findByEmail(email);
     }
 
+    /** Count total users in the database (for health checks). */
+    public long getUserCount() {
+        return userRepository.count();
+    }
+
     // ---------- Profile badges ----------
 
     private void ensureBadgesCapacity(User user, int minSize) {

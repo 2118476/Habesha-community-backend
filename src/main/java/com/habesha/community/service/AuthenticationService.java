@@ -44,11 +44,13 @@ public class AuthenticationService {
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
+                .username(request.getEmail().substring(0, request.getEmail().indexOf('@')))
                 .phone(request.getPhone())
                 .city(request.getCity())
                 .profileImageUrl(request.getProfileImageUrl())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(request.getRole() == null ? Role.USER : request.getRole())
+                .active(true)
                 .build();
         userRepository.save(user);
         String token = jwtService.generateToken(user);
@@ -60,8 +62,15 @@ public class AuthenticationService {
     }
 
     public AuthenticationResponse login(LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+        } catch (org.springframework.security.authentication.BadCredentialsException e) {
+            throw e; // Let GlobalExceptionHandler return 401
+        } catch (org.springframework.security.authentication.InternalAuthenticationServiceException e) {
+            log.error("Internal authentication error for email={}: {}", request.getEmail(), e.getMessage(), e);
+            throw new org.springframework.security.authentication.BadCredentialsException("Authentication failed", e);
+        }
 
         // Re-load managed entity so save() works on a clean JPA-managed instance
         User principal = userRepository.findByEmail(request.getEmail())
@@ -70,7 +79,13 @@ public class AuthenticationService {
         log.info("Login authenticated successfully for email={}, userId={}, role={}",
                 principal.getEmail(), principal.getId(), principal.getRole());
 
-        String token = jwtService.generateToken(principal);
+        String token;
+        try {
+            token = jwtService.generateToken(principal);
+        } catch (Exception e) {
+            log.error("Failed to generate JWT token for email={}: {}", principal.getEmail(), e.getMessage(), e);
+            throw new IllegalStateException("Failed to generate authentication token. Please contact support.");
+        }
 
         try {
             principal.setLastLoginAt(java.time.LocalDateTime.now());

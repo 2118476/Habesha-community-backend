@@ -32,6 +32,21 @@ public class JwtService {
     @Value("${jwt.secret}")
     private String secret;
 
+    @jakarta.annotation.PostConstruct
+    public void validateSecret() {
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException("JWT_SECRET is not configured. Set the JWT_SECRET environment variable.");
+        }
+        try {
+            byte[] keyBytes = Decoders.BASE64.decode(secret);
+            if (keyBytes.length < 32) {
+                throw new IllegalStateException("JWT_SECRET must be at least 256 bits (32 bytes) when Base64-decoded. Current: " + keyBytes.length + " bytes.");
+            }
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("JWT_SECRET is not valid Base64. Please provide a valid Base64-encoded secret key.", e);
+        }
+    }
+
     /**
      * Extracts the user name (in our case email) from the token.
      */
