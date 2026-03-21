@@ -70,6 +70,32 @@ public class HomeSwapController {
         return ResponseEntity.ok(service.update(id, req));
     }
 
+    /**
+     * Update with multipart: JSON data + optional new photos + optional list of photo IDs to remove.
+     */
+    @PutMapping(
+            value = "/homeswap/{id}",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    public ResponseEntity<HomeSwapResponse> updateMultipart(
+            @PathVariable Long id,
+            @RequestPart("data") String dataJson,
+            @RequestPart(value = "photos", required = false) List<MultipartFile> photos,
+            @RequestPart(value = "removePhotoIds", required = false) String removePhotoIdsJson
+    ) throws Exception {
+        if (dataJson == null || dataJson.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        HomeSwapRequest data = objectMapper.readValue(dataJson, HomeSwapRequest.class);
+        List<Long> removeIds = null;
+        if (removePhotoIdsJson != null && !removePhotoIdsJson.isBlank()) {
+            removeIds = objectMapper.readValue(removePhotoIdsJson,
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, Long.class));
+        }
+        return ResponseEntity.ok(service.update(id, data, photos, removeIds));
+    }
+
     @DeleteMapping("/homeswap/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);

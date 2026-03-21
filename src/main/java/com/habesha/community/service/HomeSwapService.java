@@ -185,7 +185,6 @@ public class HomeSwapService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
 
         User u = me();
-        Authentication a = auth();
         boolean owner = e.getUser() != null && e.getUser().getId() != null && e.getUser().getId().equals(u.getId());
         // Only the owner may update a HomeSwap.  Administrators and moderators
         // may not edit other users' posts via this API.
@@ -200,6 +199,84 @@ public class HomeSwapService {
         e.setTitle(req.getTitle().trim());
         e.setLocation(req.getLocation().trim());
         e.setDescription(req.getDescription() == null ? null : req.getDescription().trim());
+
+        e = repo.save(e);
+        return toRes(e);
+    }
+
+    /* ---------- update with photos ---------- */
+
+    @Transactional
+    public HomeSwapResponse update(Long id, HomeSwapRequest req, List<MultipartFile> newPhotos, List<Long> removePhotoIds) {
+        HomeSwap e = repo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
+
+        User u = me();
+        boolean owner = e.getUser() != null && e.getUser().getId() != null && e.getUser().getId().equals(u.getId());
+        if (!owner) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorised to update");
+        }
+
+        if (req == null) throw bad("Payload is required");
+        if (req.getTitle() == null || req.getTitle().isBlank()) throw bad("Title is required");
+        if (req.getLocation() == null || req.getLocation().isBlank()) throw bad("Location is required");
+
+        e.setTitle(req.getTitle().trim());
+        e.setLocation(req.getLocation().trim());
+        e.setDescription(req.getDescription() == null ? null : req.getDescription().trim());
+
+        // Remove photos by ID
+        if (removePhotoIds != null && !removePhotoIds.isEmpty()) {
+            List<HomeSwapPhoto> toRemove = e.getPhotos().stream()
+                    .filter(p -> removePhotoIds.contains(p.getId()))
+                    .collect(Collectors.toList());
+            for (HomeSwapPhoto p : toRemove) {
+                e.removePhoto(p);
+                // Delete file from disk
+                try {
+                    if (p.getPath() != null) {
+                        java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(p.getPath()));
+                    }
+                } catch (Exception ignored) { }
+            }
+        }
+
+        // Add new photos
+        int currentCount = e.getPhotos().size();
+        int newCount = (newPhotos == null) ? 0 : (int) newPhotos.stream().filter(f -> f != null && !f.isEmpty()).count();
+        if (currentCount + newCount > MAX_PHOTOS) {
+            throw bad("Max " + MAX_PHOTOS + " photos allowed. You have " + currentCount + " and are adding " + newCount);
+        }
+
+        int sort = e.getPhotos().stream().mapToInt(p -> p.getSortOrder() != null ? p.getSortOrder() : 0).max().orElse(-1) + 1;
+        if (newPhotos != null) {
+            for (MultipartFile file : newPhotos) {
+                if (file == null || file.isEmpty()) continue;
+                try {
+                    DiskStorageService.StoredImage s = storage.storeForHomeSwap(e.getId(), file);
+                    HomeSwapPhoto p = HomeSwapPhoto.builder()
+                            .homeSwap(e)
+                            .url(s.getUrl())
+                            .path(s.getPath())
+                            .filename(s.getFilename())
+                            .contentType(s.getContentType())
+                            .sizeBytes(s.getSizeBytes())
+                            .width(s.getWidth())
+                            .height(s.getHeight())
+                            .sortOrder(sort++)
+                            .createdAt(s.getSavedAt())
+                            .build();
+                    photoRepo.save(p);
+                    e.getPhotos().add(p);
+                } catch (Exception ex) {
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "Failed to store image: " + safeName(file),
+                            ex
+                    );
+                }
+            }
+        }
 
         e = repo.save(e);
         return toRes(e);
