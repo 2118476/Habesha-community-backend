@@ -69,6 +69,35 @@ public class MailService {
         }
     }
 
+    public void sendEmailVerification(String toEmail, String verificationToken) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(toEmail);
+            message.setSubject("Verify your email - Habesha Community");
+
+            String verifyLink = frontendUrl + "/verify-email?token=" + verificationToken;
+            String emailBody = String.format(
+                "Welcome to Habesha Community!\n\n" +
+                "Please verify your email address by clicking the link below:\n" +
+                "%s\n\n" +
+                "This link will expire in 24 hours.\n\n" +
+                "If you did not create an account, please ignore this email.\n\n" +
+                "Best regards,\n" +
+                "Habesha Community Team",
+                verifyLink
+            );
+
+            message.setText(emailBody);
+            mailSender.send(message);
+            log.info("Verification email sent to: {}", toEmail);
+
+        } catch (MailException e) {
+            log.error("Failed to send verification email to: {}", toEmail, e);
+            // Don't throw — account is created, user can request resend
+        }
+    }
+
     public void sendEmail(String toEmail, String subject, String body) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();

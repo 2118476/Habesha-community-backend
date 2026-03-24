@@ -74,6 +74,10 @@ public class User implements UserDetails {
     private boolean active = true;
 
     @Builder.Default
+    @Column(name = "email_verified")
+    private Boolean emailVerified = false;
+
+    @Builder.Default
     @Column(name = "frozen")
     private Boolean frozen = false;
 

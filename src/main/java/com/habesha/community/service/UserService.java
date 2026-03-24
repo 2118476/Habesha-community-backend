@@ -85,6 +85,7 @@ public class UserService {
                 .profileImageUrl(user.getProfileImageUrl())
                 .role(user.getRole())
                 .frozen(user.getFrozen())
+                .emailVerified(user.getEmailVerified())
                 .createdAt(user.getCreatedAt())
                 .build();
     }

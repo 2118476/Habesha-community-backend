@@ -20,5 +20,6 @@ public class UserResponse {
     private String profileImageUrl;
     private Role role;
     private Boolean frozen;
+    private Boolean emailVerified;
     private LocalDateTime createdAt; // ✅ NEW FIELD - Member since date
 }

@@ -30,6 +30,18 @@ public class AuthController {
         return ResponseEntity.ok(authService.register(request));
     }
 
+    @GetMapping("/verify-email")
+    public ResponseEntity<java.util.Map<String, String>> verifyEmail(@RequestParam String token) {
+        authService.verifyEmail(token);
+        return ResponseEntity.ok(java.util.Map.of("message", "Email verified successfully"));
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<java.util.Map<String, String>> resendVerification(@RequestBody java.util.Map<String, String> body) {
+        authService.resendVerificationEmail(body.get("email"));
+        return ResponseEntity.ok(java.util.Map.of("message", "Verification email sent"));
+    }
+
     @PostMapping("/login")
     public ResponseEntity<AuthenticationResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));

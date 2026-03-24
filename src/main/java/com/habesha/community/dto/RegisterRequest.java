@@ -24,7 +24,6 @@ public class RegisterRequest {
 
     private String phone;
 
-    @NotBlank
     private String city;
 
     private String profileImageUrl;

@@ -3,8 +3,10 @@ package com.habesha.community.service;
 import com.habesha.community.dto.AuthenticationResponse;
 import com.habesha.community.dto.LoginRequest;
 import com.habesha.community.dto.RegisterRequest;
+import com.habesha.community.model.EmailVerificationToken;
 import com.habesha.community.model.Role;
 import com.habesha.community.model.User;
+import com.habesha.community.repository.EmailVerificationTokenRepository;
 import com.habesha.community.repository.UserRepository;
 import com.habesha.community.security.JwtService;
 import jakarta.transaction.Transactional;
@@ -30,6 +32,8 @@ public class AuthenticationService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final UserSessionService userSessionService;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
+    private final MailService mailService;
 
     // Provide access to user conversions so we can include a UserResponse
     // in the authentication response.
@@ -49,16 +53,62 @@ public class AuthenticationService {
                 .city(request.getCity())
                 .profileImageUrl(request.getProfileImageUrl())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(request.getRole() == null ? Role.USER : request.getRole())
+                .role(Role.USER)
                 .active(true)
+                .emailVerified(false)
                 .build();
         userRepository.save(user);
-        String token = jwtService.generateToken(user);
-        
-        // Create session for this login
-        userSessionService.createOrUpdateSession(user, token);
-        
-        return new AuthenticationResponse(token, userService.toResponse(user));
+
+        // Create verification token and send email
+        String token = java.util.UUID.randomUUID().toString();
+        EmailVerificationToken verificationToken = EmailVerificationToken.builder()
+                .token(token)
+                .user(user)
+                .expiresAt(java.time.LocalDateTime.now().plusHours(24))
+                .build();
+        emailVerificationTokenRepository.save(verificationToken);
+        mailService.sendEmailVerification(user.getEmail(), token);
+
+        String jwtToken = jwtService.generateToken(user);
+        userSessionService.createOrUpdateSession(user, jwtToken);
+
+        return new AuthenticationResponse(jwtToken, userService.toResponse(user));
+    }
+
+    @Transactional
+    public void verifyEmail(String token) {
+        EmailVerificationToken verificationToken = emailVerificationTokenRepository.findByToken(token)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid verification token"));
+
+        if (!verificationToken.isValid()) {
+            throw new IllegalArgumentException("Verification link has expired or already been used");
+        }
+
+        verificationToken.setUsed(true);
+        emailVerificationTokenRepository.save(verificationToken);
+
+        User user = verificationToken.getUser();
+        user.setEmailVerified(true);
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void resendVerificationEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new IllegalArgumentException("Email is already verified");
+        }
+
+        String token = java.util.UUID.randomUUID().toString();
+        EmailVerificationToken verificationToken = EmailVerificationToken.builder()
+                .token(token)
+                .user(user)
+                .expiresAt(java.time.LocalDateTime.now().plusHours(24))
+                .build();
+        emailVerificationTokenRepository.save(verificationToken);
+        mailService.sendEmailVerification(user.getEmail(), token);
     }
 
     public AuthenticationResponse login(LoginRequest request) {
