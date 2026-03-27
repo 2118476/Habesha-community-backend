@@ -129,6 +129,29 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handle email not verified exception — returns 403 with specific error code
+     */
+    @ExceptionHandler(com.habesha.community.exception.EmailNotVerifiedException.class)
+    public ResponseEntity<ErrorResponse> handleEmailNotVerifiedException(
+            com.habesha.community.exception.EmailNotVerifiedException ex,
+            WebRequest request) {
+
+        String correlationId = generateCorrelationId();
+        log.warn("[{}] Email not verified for: {}", correlationId, ex.getEmail());
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.FORBIDDEN.value())
+                .error("Email Not Verified")
+                .message(ex.getMessage())
+                .path(request.getDescription(false).replace("uri=", ""))
+                .correlationId(correlationId)
+                .build();
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+    }
+
+    /**
      * Handle bad credentials exceptions
      */
     @ExceptionHandler(BadCredentialsException.class)

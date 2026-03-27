@@ -3,6 +3,8 @@ package com.habesha.community.service;
 import com.habesha.community.dto.AuthenticationResponse;
 import com.habesha.community.dto.LoginRequest;
 import com.habesha.community.dto.RegisterRequest;
+import com.habesha.community.dto.RegistrationResponse;
+import com.habesha.community.exception.EmailNotVerifiedException;
 import com.habesha.community.model.EmailVerificationToken;
 import com.habesha.community.model.Role;
 import com.habesha.community.model.User;
@@ -40,7 +42,7 @@ public class AuthenticationService {
     private final com.habesha.community.service.UserService userService;
 
     @Transactional
-    public AuthenticationResponse register(RegisterRequest request) {
+    public RegistrationResponse register(RegisterRequest request) {
         // Prevent duplicate registration
         userRepository.findByEmail(request.getEmail()).ifPresent(u -> {
             throw new IllegalArgumentException("Email already registered");
@@ -69,10 +71,12 @@ public class AuthenticationService {
         emailVerificationTokenRepository.save(verificationToken);
         mailService.sendEmailVerification(user.getEmail(), token);
 
-        String jwtToken = jwtService.generateToken(user);
-        userSessionService.createOrUpdateSession(user, jwtToken);
-
-        return new AuthenticationResponse(jwtToken, userService.toResponse(user));
+        return RegistrationResponse.builder()
+                .success(true)
+                .verificationRequired(true)
+                .message("Please check your email and verify your account before signing in.")
+                .email(user.getEmail())
+                .build();
     }
 
     @Transactional
@@ -80,25 +84,40 @@ public class AuthenticationService {
         EmailVerificationToken verificationToken = emailVerificationTokenRepository.findByToken(token)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid verification token"));
 
-        if (!verificationToken.isValid()) {
-            throw new IllegalArgumentException("Verification link has expired or already been used");
+        User user = verificationToken.getUser();
+
+        // Already verified
+        if (Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new IllegalArgumentException("Email is already verified. You can sign in.");
+        }
+
+        if (verificationToken.isExpired()) {
+            throw new IllegalArgumentException("Verification link has expired. Please request a new one.");
+        }
+
+        if (verificationToken.getUsed()) {
+            throw new IllegalArgumentException("This verification link has already been used.");
         }
 
         verificationToken.setUsed(true);
         emailVerificationTokenRepository.save(verificationToken);
 
-        User user = verificationToken.getUser();
         user.setEmailVerified(true);
         userRepository.save(user);
     }
 
     @Transactional
     public void resendVerificationEmail(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        User user = userRepository.findByEmail(email).orElse(null);
+
+        // Safe response — don't leak whether email exists
+        if (user == null) {
+            log.info("Resend verification requested for unknown email: {}", email);
+            return; // silently succeed
+        }
 
         if (Boolean.TRUE.equals(user.getEmailVerified())) {
-            throw new IllegalArgumentException("Email is already verified");
+            throw new IllegalArgumentException("Email is already verified. You can sign in.");
         }
 
         String token = java.util.UUID.randomUUID().toString();
@@ -125,6 +144,11 @@ public class AuthenticationService {
         // Re-load managed entity so save() works on a clean JPA-managed instance
         User principal = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new IllegalStateException("Authenticated user not found in database"));
+
+        // Block login for unverified email
+        if (!Boolean.TRUE.equals(principal.getEmailVerified())) {
+            throw new EmailNotVerifiedException(principal.getEmail());
+        }
 
         log.info("Login authenticated successfully for email={}, userId={}, role={}",
                 principal.getEmail(), principal.getId(), principal.getRole());

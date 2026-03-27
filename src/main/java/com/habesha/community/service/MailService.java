@@ -79,10 +79,11 @@ public class MailService {
             String verifyLink = frontendUrl + "/verify-email?token=" + verificationToken;
             String emailBody = String.format(
                 "Welcome to Habesha Community!\n\n" +
-                "Please verify your email address by clicking the link below:\n" +
+                "You must verify your email address before you can sign in.\n\n" +
+                "Please click the link below to verify:\n" +
                 "%s\n\n" +
                 "This link will expire in 24 hours.\n\n" +
-                "If you did not create an account, please ignore this email.\n\n" +
+                "If you did not create this account, please ignore this email.\n\n" +
                 "Best regards,\n" +
                 "Habesha Community Team",
                 verifyLink

@@ -3,6 +3,7 @@ package com.habesha.community.controller;
 import com.habesha.community.dto.AuthenticationResponse;
 import com.habesha.community.dto.LoginRequest;
 import com.habesha.community.dto.RegisterRequest;
+import com.habesha.community.dto.RegistrationResponse;
 import com.habesha.community.dto.UserResponse;
 import com.habesha.community.service.AuthenticationService;
 import com.habesha.community.service.UserService;
@@ -26,7 +27,7 @@ public class AuthController {
     private final UserService userService;
 
     @PostMapping("/register")
-    public ResponseEntity<AuthenticationResponse> register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<RegistrationResponse> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.ok(authService.register(request));
     }
 
