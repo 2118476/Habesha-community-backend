@@ -20,6 +20,14 @@ public class StaticResourceConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         Path root = Paths.get(uploadsRoot).toAbsolutePath().normalize();
+
+        // Ensure the uploads directory exists so the resource handler doesn't crash
+        try {
+            java.nio.file.Files.createDirectories(root);
+        } catch (Exception ignored) {
+            // Best effort — if it fails, static resources just won't serve
+        }
+
         String location = root.toUri().toString(); // e.g. file:/var/app/uploads/
 
         // /uploads/**  ->  {uploadsRoot}/**   (prefix removed)
