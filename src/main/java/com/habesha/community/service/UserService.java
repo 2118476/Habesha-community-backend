@@ -238,17 +238,17 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public Optional<UserImage> getCurrentUserImage() {
-        return getCurrentUser().map(u -> {
-            if (u.getProfileImage() == null) return null;
-            return new UserImage(u.getProfileImage(), u.getProfileImageType());
+        return getCurrentUser().flatMap(u -> {
+            if (u.getProfileImage() == null) return Optional.empty();
+            return Optional.of(new UserImage(u.getProfileImage(), u.getProfileImageType()));
         });
     }
 
     @Transactional(readOnly = true)
     public Optional<UserImage> getUserImageById(Long id) {
-        return userRepository.findById(id).map(u -> {
-            if (u.getProfileImage() == null) return null;
-            return new UserImage(u.getProfileImage(), u.getProfileImageType());
+        return userRepository.findById(id).flatMap(u -> {
+            if (u.getProfileImage() == null) return Optional.empty();
+            return Optional.of(new UserImage(u.getProfileImage(), u.getProfileImageType()));
         });
     }
 
