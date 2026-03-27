@@ -43,6 +43,11 @@ public class HomeSwapPhoto {
     @Column(length = 100)
     private String contentType;
 
+    @Lob
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.BINARY)
+    @Column(name = "image_data", columnDefinition = "bytea")
+    private byte[] imageData;
+
     private Long sizeBytes; // use Long to allow null until set
 
     private Integer width;

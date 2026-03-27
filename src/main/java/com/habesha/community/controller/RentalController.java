@@ -120,6 +120,8 @@ public class RentalController {
                     .filePath(savedPath.toString())
                     .sortIndex(nextIndex++)
                     .rental(rental)
+                    .imageData(mf.getBytes())
+                    .contentType(mf.getContentType() != null ? mf.getContentType() : "image/jpeg")
                     .build();
 
             rental.addPhoto(photo);

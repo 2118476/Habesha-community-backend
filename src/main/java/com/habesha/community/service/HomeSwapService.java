@@ -141,6 +141,7 @@ public class HomeSwapService {
                             .sizeBytes(s.getSizeBytes())
                             .width(s.getWidth())
                             .height(s.getHeight())
+                            .imageData(file.getBytes())
                             .sortOrder(sort++)
                             .createdAt(s.getSavedAt())
                             .build();
@@ -263,6 +264,7 @@ public class HomeSwapService {
                             .sizeBytes(s.getSizeBytes())
                             .width(s.getWidth())
                             .height(s.getHeight())
+                            .imageData(file.getBytes())
                             .sortOrder(sort++)
                             .createdAt(s.getSavedAt())
                             .build();

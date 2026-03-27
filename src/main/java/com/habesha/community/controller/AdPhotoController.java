@@ -23,27 +23,24 @@ public class AdPhotoController {
     private final ClassifiedAdRepository adRepository;
     private final AdPhotoRepository photoRepository;
 
-    /** Stream by photo id */
     @GetMapping("/ads/photos/{photoId}")
-    public ResponseEntity<byte[]> photoById(@PathVariable Long photoId) throws Exception {
+    public ResponseEntity<byte[]> photoById(@PathVariable Long photoId) {
         AdPhoto p = photoRepository.findById(photoId).orElse(null);
         if (p == null) return ResponseEntity.notFound().build();
         return stream(p);
     }
 
-    /** First photo for an ad (thumbnail) */
     @GetMapping("/ads/{id}/photos/first")
-    public ResponseEntity<byte[]> firstPhoto(@PathVariable Long id) throws Exception {
+    public ResponseEntity<byte[]> firstPhoto(@PathVariable Long id) {
         ClassifiedAd ad = adRepository.findById(id).orElse(null);
         if (ad == null || ad.getPhotos() == null || ad.getPhotos().isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        return stream(ad.getPhotos().get(0)); // list is already ordered in entity
+        return stream(ad.getPhotos().get(0));
     }
 
-    /** Photo by index for an ad */
     @GetMapping("/ads/{id}/photos/{index}")
-    public ResponseEntity<byte[]> photoByIndex(@PathVariable Long id, @PathVariable Integer index) throws Exception {
+    public ResponseEntity<byte[]> photoByIndex(@PathVariable Long id, @PathVariable Integer index) {
         ClassifiedAd ad = adRepository.findById(id).orElse(null);
         if (ad == null || ad.getPhotos() == null || index >= ad.getPhotos().size() || index < 0) {
             return ResponseEntity.notFound().build();
@@ -51,18 +48,32 @@ public class AdPhotoController {
         return stream(ad.getPhotos().get(index));
     }
 
-    private ResponseEntity<byte[]> stream(AdPhoto p) throws Exception {
-        Path path = Path.of(p.getFilePath());
-        if (!Files.exists(path)) return ResponseEntity.notFound().build();
-
-        String mime = Files.probeContentType(path);
-        if (mime == null) mime = MediaType.APPLICATION_OCTET_STREAM_VALUE;
-
+    private ResponseEntity<byte[]> stream(AdPhoto p) {
         HttpHeaders headers = new HttpHeaders();
         headers.setCacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePublic());
-        return ResponseEntity.ok()
-                .headers(headers)
-                .contentType(MediaType.parseMediaType(mime))
-                .body(Files.readAllBytes(path));
+
+        // Try disk first
+        try {
+            Path path = Path.of(p.getFilePath());
+            if (Files.exists(path)) {
+                String mime = Files.probeContentType(path);
+                if (mime == null) mime = "image/jpeg";
+                return ResponseEntity.ok()
+                        .headers(headers)
+                        .contentType(MediaType.parseMediaType(mime))
+                        .body(Files.readAllBytes(path));
+            }
+        } catch (Exception ignored) {}
+
+        // Fallback to database blob
+        if (p.getImageData() != null && p.getImageData().length > 0) {
+            String mime = p.getContentType() != null ? p.getContentType() : "image/jpeg";
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .contentType(MediaType.parseMediaType(mime))
+                    .body(p.getImageData());
+        }
+
+        return ResponseEntity.notFound().build();
     }
 }

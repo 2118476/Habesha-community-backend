@@ -32,6 +32,14 @@ public class RentalPhoto {
     @Column(nullable = false)
     private Integer sortIndex;
 
+    @Lob
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.BINARY)
+    @Column(name = "image_data", columnDefinition = "bytea")
+    private byte[] imageData;
+
+    @Column(name = "content_type", length = 100)
+    private String contentType;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 

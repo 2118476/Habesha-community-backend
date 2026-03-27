@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping
@@ -24,36 +23,48 @@ public class RentalPhotoController {
     private final RentalRepository rentalRepository;
     private final RentalPhotoRepository photoRepository;
 
-    /** Stream by photo id (SINGLE OWNER for this route) */
     @GetMapping("/rentals/photos/{photoId}")
-    public ResponseEntity<byte[]> photoById(@PathVariable Long photoId) throws Exception {
+    public ResponseEntity<byte[]> photoById(@PathVariable Long photoId) {
         RentalPhoto p = photoRepository.findById(photoId).orElse(null);
         if (p == null) return ResponseEntity.notFound().build();
         return stream(p);
     }
 
-    /** First photo for a rental (thumbnail) */
     @GetMapping("/rentals/{id}/photos/first")
-    public ResponseEntity<byte[]> firstPhoto(@PathVariable Long id) throws Exception {
+    public ResponseEntity<byte[]> firstPhoto(@PathVariable Long id) {
         Rental r = rentalRepository.findById(id).orElse(null);
         if (r == null || r.getPhotos() == null || r.getPhotos().isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        return stream(r.getPhotos().get(0)); // list is already ordered in entity
+        return stream(r.getPhotos().get(0));
     }
 
-    private ResponseEntity<byte[]> stream(RentalPhoto p) throws Exception {
-        Path path = Path.of(p.getFilePath());
-        if (!Files.exists(path)) return ResponseEntity.notFound().build();
-
-        String mime = Files.probeContentType(path);
-        if (mime == null) mime = MediaType.APPLICATION_OCTET_STREAM_VALUE;
-
+    private ResponseEntity<byte[]> stream(RentalPhoto p) {
         HttpHeaders headers = new HttpHeaders();
         headers.setCacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePublic());
-        return ResponseEntity.ok()
-                .headers(headers)
-                .contentType(MediaType.parseMediaType(mime))
-                .body(Files.readAllBytes(path));
+
+        // Try disk first
+        try {
+            Path path = Path.of(p.getFilePath());
+            if (Files.exists(path)) {
+                String mime = Files.probeContentType(path);
+                if (mime == null) mime = "image/jpeg";
+                return ResponseEntity.ok()
+                        .headers(headers)
+                        .contentType(MediaType.parseMediaType(mime))
+                        .body(Files.readAllBytes(path));
+            }
+        } catch (Exception ignored) {}
+
+        // Fallback to database blob
+        if (p.getImageData() != null && p.getImageData().length > 0) {
+            String mime = p.getContentType() != null ? p.getContentType() : "image/jpeg";
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .contentType(MediaType.parseMediaType(mime))
+                    .body(p.getImageData());
+        }
+
+        return ResponseEntity.notFound().build();
     }
 }

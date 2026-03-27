@@ -278,6 +278,8 @@ public class AdController {
                     .filePath(savedPath.toString())
                     .sortIndex(nextIndex++)
                     .ad(ad)
+                    .imageData(mf.getBytes())
+                    .contentType(mf.getContentType() != null ? mf.getContentType() : "image/jpeg")
                     .build();
 
             System.out.println("Creating AdPhoto: filename=" + safe + ", sortIndex=" + photo.getSortIndex() + ", adId=" + ad.getId());
