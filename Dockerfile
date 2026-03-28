@@ -3,12 +3,7 @@
 ########## BUILD STAGE ##########
 FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /app
-
-# Copy only files needed to resolve deps first (better caching)
 COPY pom.xml ./
-RUN mvn -q -DskipTests dependency:go-offline
-
-# Now copy the rest and build
 COPY src ./src
 RUN mvn -q -DskipTests package
 
@@ -16,18 +11,12 @@ RUN mvn -q -DskipTests package
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
-# (Optional) non-root user
 RUN addgroup -S spring && adduser -S spring -G spring
-
-# Create writable uploads directory owned by the spring user
 RUN mkdir -p /app/uploads && chown -R spring:spring /app/uploads
 
 USER spring
 
-# Render sets PORT; Spring Boot reads it via application.properties
 ENV JAVA_OPTS=""
-
-# Copy the fat jar from the build stage
 COPY --from=build /app/target/*.jar /app/app.jar
 
 EXPOSE 8080
