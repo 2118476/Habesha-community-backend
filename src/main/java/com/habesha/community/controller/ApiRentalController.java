@@ -89,7 +89,12 @@ public class ApiRentalController {
                 .location(rental.getLocation())
                 .amenities(Collections.emptyList())
                 .featured(rental.isFeatured())
-                .images(rental.getImages() != null ? rental.getImages() : Collections.emptyList())
+                // Force-initialize the lazy collection here (we're inside a
+                // @Transactional method) so Jackson doesn't hit a closed session
+                // when it serializes the DTO after the request returns.
+                .images(rental.getImages() != null
+                        ? new java.util.ArrayList<>(rental.getImages())
+                        : Collections.emptyList())
                 .createdAt(rental.getCreatedAt())
                 .postedBy(author)
                 .author(author)

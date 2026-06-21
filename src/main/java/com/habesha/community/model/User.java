@@ -48,7 +48,7 @@ public class User implements UserDetails {
 
     private String bannerImageUrl;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_badges", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "badge")
     @Builder.Default
