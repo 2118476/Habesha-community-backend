@@ -1,7 +1,9 @@
 package com.habesha.community.service;
 
+import com.habesha.community.dto.RentalDetailDto;
 import com.habesha.community.dto.RentalRequest;
 import com.habesha.community.dto.RentalUpdateRequest;
+import com.habesha.community.dto.UserSummaryDto;
 import com.habesha.community.model.Role;
 import com.habesha.community.model.Rental;
 import com.habesha.community.model.User;
@@ -14,8 +16,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Service for posting, editing, and searching rental listings.
@@ -68,11 +72,67 @@ public class RentalService {
                 .orElseGet(rentalRepository::findAllByOrderByCreatedAtDesc);
     }
 
+    /**
+     * List rentals as DTOs. Runs inside a transaction so the mapping can read
+     * the entity safely (open-in-view is disabled), and returns a lightweight
+     * payload that never serialises lazy collections or photo blobs.
+     */
+    @Transactional
+    public List<RentalDetailDto> listRentalDtos(Optional<String> city) {
+        return listRentals(city).stream()
+                .map(r -> toDto(r, false))
+                .collect(Collectors.toList());
+    }
+
     /* ===================== READ ===================== */
 
     public Rental getRental(Long id) {
         return rentalRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Rental not found"));
+    }
+
+    /**
+     * Read a single rental as a DTO (includes owner summary). Transactional so
+     * the lazy owner association can be resolved during mapping.
+     */
+    @Transactional
+    public RentalDetailDto getRentalDto(Long id) {
+        return toDto(getRental(id), true);
+    }
+
+    /**
+     * Map a Rental entity to a response DTO. Only call this from within a
+     * transaction. Photos are intentionally omitted here — the frontend loads
+     * them via the dedicated /rentals/{id}/photos endpoints so we never dump
+     * image bytes into list/detail JSON.
+     */
+    private RentalDetailDto toDto(Rental r, boolean includeOwner) {
+        RentalDetailDto.RentalDetailDtoBuilder b = RentalDetailDto.builder()
+                .id(r.getId())
+                .title(r.getTitle())
+                .description(r.getDescription())
+                .price(r.getPrice())
+                .currency("GBP")
+                .roomType(r.getRoomType())
+                .location(r.getLocation())
+                .featured(r.isFeatured())
+                .createdAt(r.getCreatedAt())
+                .amenities(Collections.emptyList())
+                .images(Collections.emptyList());
+
+        if (includeOwner && r.getOwner() != null) {
+            User o = r.getOwner();
+            String displayName = (o.getName() != null && !o.getName().isBlank())
+                    ? o.getName() : o.getUsername();
+            b.ownerId(o.getId())
+             .ownerName(displayName)
+             .postedBy(UserSummaryDto.builder()
+                     .id(o.getId())
+                     .displayName(displayName)
+                     .username(o.getUsername())
+                     .build());
+        }
+        return b.build();
     }
 
     /* ===================== UPDATE ===================== */

@@ -11,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -37,6 +38,7 @@ public class ApiRentalController {
      * currently supported; search parameters are reserved for future use.
      */
     @GetMapping
+    @Transactional(readOnly = true)
     public ResponseEntity<List<RentalDetailDto>> listRentals(
             @RequestParam(name = "search", required = false) String search,
             @RequestParam(name = "type", required = false) String roomType,
@@ -67,6 +69,7 @@ public class ApiRentalController {
      * Get details for a single rental.
      */
     @GetMapping("/{id}")
+    @Transactional(readOnly = true)
     public ResponseEntity<RentalDetailDto> getRental(@PathVariable Long id) {
         Rental rental = rentalRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Rental not found"));

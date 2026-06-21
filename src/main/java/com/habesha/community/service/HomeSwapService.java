@@ -8,6 +8,7 @@ import com.habesha.community.model.User;
 import com.habesha.community.repository.HomeSwapPhotoRepository;
 import com.habesha.community.repository.HomeSwapRepository;
 import com.habesha.community.repository.UserRepository;
+import com.habesha.community.service.SupabaseStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -18,9 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,6 +36,7 @@ public class HomeSwapService {
     private final HomeSwapPhotoRepository photoRepo;
     private final UserRepository userRepository;
     private final DiskStorageService storage;
+    private final SupabaseStorageService supabaseStorage;
 
     /* ---------- helpers ---------- */
 
@@ -131,20 +135,7 @@ public class HomeSwapService {
             for (MultipartFile file : photos) {
                 if (file == null || file.isEmpty()) continue;
                 try {
-                    DiskStorageService.StoredImage s = storage.storeForHomeSwap(e.getId(), file);
-                    HomeSwapPhoto p = HomeSwapPhoto.builder()
-                            .homeSwap(e)
-                            .url(s.getUrl())          // public URL for <img src=...>
-                            .path(s.getPath())        // absolute FS path (for delete)
-                            .filename(s.getFilename())
-                            .contentType(s.getContentType())
-                            .sizeBytes(s.getSizeBytes())
-                            .width(s.getWidth())
-                            .height(s.getHeight())
-                            .imageData(file.getBytes())
-                            .sortOrder(sort++)
-                            .createdAt(s.getSavedAt())
-                            .build();
+                    HomeSwapPhoto p = storePhoto(e, file, sort++);
                     photoRepo.save(p);
                     e.getPhotos().add(p);
                 } catch (Exception ex) {
@@ -233,9 +224,11 @@ public class HomeSwapService {
                     .collect(Collectors.toList());
             for (HomeSwapPhoto p : toRemove) {
                 e.removePhoto(p);
-                // Delete file from disk
+                // Best-effort cleanup from Supabase (no-op if not a Supabase URL)
+                supabaseStorage.deleteByPublicUrl(p.getUrl());
+                // Best-effort cleanup from local disk (skip if path is a URL)
                 try {
-                    if (p.getPath() != null) {
+                    if (p.getPath() != null && !p.getPath().startsWith("http")) {
                         java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(p.getPath()));
                     }
                 } catch (Exception ignored) { }
@@ -254,20 +247,7 @@ public class HomeSwapService {
             for (MultipartFile file : newPhotos) {
                 if (file == null || file.isEmpty()) continue;
                 try {
-                    DiskStorageService.StoredImage s = storage.storeForHomeSwap(e.getId(), file);
-                    HomeSwapPhoto p = HomeSwapPhoto.builder()
-                            .homeSwap(e)
-                            .url(s.getUrl())
-                            .path(s.getPath())
-                            .filename(s.getFilename())
-                            .contentType(s.getContentType())
-                            .sizeBytes(s.getSizeBytes())
-                            .width(s.getWidth())
-                            .height(s.getHeight())
-                            .imageData(file.getBytes())
-                            .sortOrder(sort++)
-                            .createdAt(s.getSavedAt())
-                            .build();
+                    HomeSwapPhoto p = storePhoto(e, file, sort++);
                     photoRepo.save(p);
                     e.getPhotos().add(p);
                 } catch (Exception ex) {
@@ -305,10 +285,51 @@ public class HomeSwapService {
 
         if (e.getPhotos() != null) {
             e.getPhotos().forEach(p -> {
-                try { storage.deletePath(p.getPath()); } catch (Exception ignore) {}
+                supabaseStorage.deleteByPublicUrl(p.getUrl()); // no-op for non-Supabase
+                try {
+                    if (p.getPath() != null && !p.getPath().startsWith("http")) {
+                        storage.deletePath(p.getPath());
+                    }
+                } catch (Exception ignore) {}
             });
         }
         repo.delete(e);
+    }
+
+    /* ---------- photo storage helper ---------- */
+
+    private HomeSwapPhoto storePhoto(HomeSwap e, MultipartFile file, int sortOrder) throws Exception {
+        String original = Objects.requireNonNullElse(file.getOriginalFilename(), "image.jpg");
+        String ct = file.getContentType() != null ? file.getContentType() : "image/jpeg";
+        if (supabaseStorage.isEnabled()) {
+            byte[] bytes = file.getBytes();
+            String cdnUrl = supabaseStorage.upload("homeswap/" + e.getId(), original, bytes, ct);
+            return HomeSwapPhoto.builder()
+                    .homeSwap(e)
+                    .url(cdnUrl)
+                    .path(cdnUrl)        // path is non-null column; store CDN URL as placeholder
+                    .filename(original)
+                    .contentType(ct)
+                    .sizeBytes((long) bytes.length)
+                    .sortOrder(sortOrder)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+        } else {
+            DiskStorageService.StoredImage s = storage.storeForHomeSwap(e.getId(), file);
+            return HomeSwapPhoto.builder()
+                    .homeSwap(e)
+                    .url(s.getUrl())
+                    .path(s.getPath())
+                    .filename(s.getFilename())
+                    .contentType(s.getContentType())
+                    .sizeBytes(s.getSizeBytes())
+                    .width(s.getWidth())
+                    .height(s.getHeight())
+                    .imageData(file.getBytes())
+                    .sortOrder(sortOrder)
+                    .createdAt(s.getSavedAt())
+                    .build();
+        }
     }
 
     /* ---------- mapping ---------- */

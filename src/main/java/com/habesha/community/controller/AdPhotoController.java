@@ -7,10 +7,13 @@ import com.habesha.community.repository.ClassifiedAdRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -24,14 +27,16 @@ public class AdPhotoController {
     private final AdPhotoRepository photoRepository;
 
     @GetMapping("/ads/photos/{photoId}")
-    public ResponseEntity<byte[]> photoById(@PathVariable Long photoId) {
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> photoById(@PathVariable Long photoId) {
         AdPhoto p = photoRepository.findById(photoId).orElse(null);
         if (p == null) return ResponseEntity.notFound().build();
         return stream(p);
     }
 
     @GetMapping("/ads/{id}/photos/first")
-    public ResponseEntity<byte[]> firstPhoto(@PathVariable Long id) {
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> firstPhoto(@PathVariable Long id) {
         ClassifiedAd ad = adRepository.findById(id).orElse(null);
         if (ad == null || ad.getPhotos() == null || ad.getPhotos().isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -40,7 +45,8 @@ public class AdPhotoController {
     }
 
     @GetMapping("/ads/{id}/photos/{index}")
-    public ResponseEntity<byte[]> photoByIndex(@PathVariable Long id, @PathVariable Integer index) {
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> photoByIndex(@PathVariable Long id, @PathVariable Integer index) {
         ClassifiedAd ad = adRepository.findById(id).orElse(null);
         if (ad == null || ad.getPhotos() == null || index >= ad.getPhotos().size() || index < 0) {
             return ResponseEntity.notFound().build();
@@ -48,13 +54,22 @@ public class AdPhotoController {
         return stream(ad.getPhotos().get(index));
     }
 
-    private ResponseEntity<byte[]> stream(AdPhoto p) {
+    private ResponseEntity<?> stream(AdPhoto p) {
+        // CDN redirect for Supabase-stored photos
+        String fp = p.getFilePath();
+        if (fp != null && (fp.startsWith("http://") || fp.startsWith("https://"))) {
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(fp))
+                    .cacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePublic())
+                    .build();
+        }
+
         HttpHeaders headers = new HttpHeaders();
         headers.setCacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePublic());
 
         // Try disk first
         try {
-            Path path = Path.of(p.getFilePath());
+            Path path = Path.of(fp);
             if (Files.exists(path)) {
                 String mime = Files.probeContentType(path);
                 if (mime == null) mime = "image/jpeg";

@@ -1,6 +1,8 @@
 package com.habesha.community.controller;
 
 import com.habesha.community.dto.UserResponse;
+import com.habesha.community.model.User;
+import com.habesha.community.service.SupabaseStorageService;
 import com.habesha.community.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,6 +11,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.net.URI;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -20,9 +24,11 @@ import java.util.Objects;
 public class ProfileImageController {
 
     private final UserService userService;
+    private final SupabaseStorageService supabaseStorage;
 
     /**
-     * Upload avatar into PostgreSQL (BYTEA). Accepts common field names.
+     * Upload avatar. Accepts common field names.
+     * When Supabase Storage is configured, the bytes go there and only the CDN URL is stored in Postgres.
      */
     @PostMapping(
         path = "/me/profile-image",
@@ -59,7 +65,20 @@ public class ProfileImageController {
 
         UserResponse updated;
         try {
-            updated = userService.updateProfileImage(bytes, contentType);
+            if (supabaseStorage.isEnabled()) {
+                User currentUser = userService.getCurrentUser()
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authenticated"));
+                String cdnUrl = supabaseStorage.upload(
+                    "profile/" + currentUser.getId(),
+                    Objects.requireNonNullElse(part.getOriginalFilename(), "avatar"),
+                    bytes,
+                    contentType
+                );
+                // updateProfileImageUrl clears the blob and sets the external URL
+                updated = userService.updateProfileImageUrl(cdnUrl);
+            } else {
+                updated = userService.updateProfileImage(bytes, contentType);
+            }
         } catch (Exception e) {
             log.error("Failed to save profile image: type={}, size={}, error={}",
                     contentType, bytes.length, e.getMessage(), e);
@@ -74,20 +93,41 @@ public class ProfileImageController {
     }
 
     /**
-     * Stream the current user's avatar.
+     * Stream or redirect to the current user's avatar.
      */
     @GetMapping("/me/profile-image")
-    public ResponseEntity<byte[]> getMyProfileImage() {
+    public ResponseEntity<?> getMyProfileImage() {
+        User u = userService.getCurrentUser()
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not authenticated"));
+        String imgUrl = u.getProfileImageUrl();
+        if (imgUrl != null && (imgUrl.startsWith("http://") || imgUrl.startsWith("https://"))) {
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(imgUrl))
+                    .cacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePublic())
+                    .build();
+        }
         var img = userService.getCurrentUserImage()
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No image"));
         return buildImageResponse(img.data(), img.contentType());
     }
 
     /**
-     * Public endpoint to fetch a user's avatar by ID (useful for <img> tags).
+     * Public endpoint to fetch a user's avatar by ID (useful for {@code <img>} tags).
      */
     @GetMapping("/{id}/profile-image")
-    public ResponseEntity<byte[]> getUserProfileImage(@PathVariable Long id) {
+    public ResponseEntity<?> getUserProfileImage(@PathVariable Long id) {
+        // Redirect to CDN if there's an external URL (Supabase path)
+        try {
+            User u = userService.getEntityById(id);
+            String imgUrl = u.getProfileImageUrl();
+            if (imgUrl != null && (imgUrl.startsWith("http://") || imgUrl.startsWith("https://"))) {
+                return ResponseEntity.status(HttpStatus.FOUND)
+                        .location(URI.create(imgUrl))
+                        .cacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePublic())
+                        .build();
+            }
+        } catch (Exception ignored) {}
+
         var img = userService.getUserImageById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No image"));
         return buildImageResponse(img.data(), img.contentType());
@@ -104,10 +144,11 @@ public class ProfileImageController {
         headers.setCacheControl(CacheControl.noCache());
         return new ResponseEntity<>(bytes, headers, HttpStatus.OK);
     }
+
     /** Remove the current user's profile image (sets fields to null). */
     @DeleteMapping("/me/profile-image")
     public ResponseEntity<Void> deleteMyProfileImage() {
-        userService.removeProfileImage();      // no-op if already empty
-        return ResponseEntity.noContent().build(); // 204
+        userService.removeProfileImage();
+        return ResponseEntity.noContent().build();
     }
 }

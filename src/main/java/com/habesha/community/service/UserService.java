@@ -212,11 +212,13 @@ public class UserService {
 
     // ---------- Avatar (DB stored) ----------
 
-    /** Optional URL-based setter if you want to store a remote/data URL (kept, but renamed). */
+    /** Set an external URL as the profile image, clearing any stored blob. */
     @Transactional
     public UserResponse updateProfileImageUrl(String url) {
         User u = getCurrentUser().orElseThrow(() -> new IllegalStateException("No current user"));
         u.setProfileImageUrl(url);
+        u.setProfileImage(null);
+        u.setProfileImageType(null);
         userRepository.save(u);
         return toResponse(u);
     }

@@ -5,10 +5,13 @@ import com.habesha.community.repository.HomeSwapPhotoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -21,21 +24,32 @@ public class HomeSwapPhotoController {
     private final HomeSwapPhotoRepository photoRepository;
 
     @GetMapping("/homeswap/photos/{photoId}")
-    public ResponseEntity<byte[]> photoById(@PathVariable Long photoId) {
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> photoById(@PathVariable Long photoId) {
         HomeSwapPhoto p = photoRepository.findById(photoId).orElse(null);
         if (p == null) return ResponseEntity.notFound().build();
         return stream(p);
     }
 
     @GetMapping("/homeswap/{id}/photos/first")
-    public ResponseEntity<byte[]> firstPhoto(@PathVariable Long id) {
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> firstPhoto(@PathVariable Long id) {
         HomeSwapPhoto p = photoRepository.findFirstByHomeSwap_IdOrderBySortOrderAscIdAsc(id)
                 .orElse(null);
         if (p == null) return ResponseEntity.notFound().build();
         return stream(p);
     }
 
-    private ResponseEntity<byte[]> stream(HomeSwapPhoto p) {
+    private ResponseEntity<?> stream(HomeSwapPhoto p) {
+        // CDN redirect for Supabase-stored photos (url field holds the public URL)
+        String url = p.getUrl();
+        if (url != null && (url.startsWith("http://") || url.startsWith("https://"))) {
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(url))
+                    .cacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePublic())
+                    .build();
+        }
+
         HttpHeaders headers = new HttpHeaders();
         headers.setCacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePublic());
 

@@ -30,6 +30,11 @@ public class RentalDetailDto {
     private boolean featured;
     private List<String> images;
     private LocalDateTime createdAt;
+
+    /** Owner id/name, surfaced directly so the frontend can resolve the poster. */
+    private Long ownerId;
+    private String ownerName;
+
     /**
      * Summary of the user who posted this rental listing.  Use this
      * property instead of the deprecated {@code author} field.

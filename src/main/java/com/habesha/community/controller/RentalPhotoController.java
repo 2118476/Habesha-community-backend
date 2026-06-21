@@ -7,10 +7,13 @@ import com.habesha.community.repository.RentalRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -24,14 +27,16 @@ public class RentalPhotoController {
     private final RentalPhotoRepository photoRepository;
 
     @GetMapping("/rentals/photos/{photoId}")
-    public ResponseEntity<byte[]> photoById(@PathVariable Long photoId) {
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> photoById(@PathVariable Long photoId) {
         RentalPhoto p = photoRepository.findById(photoId).orElse(null);
         if (p == null) return ResponseEntity.notFound().build();
         return stream(p);
     }
 
     @GetMapping("/rentals/{id}/photos/first")
-    public ResponseEntity<byte[]> firstPhoto(@PathVariable Long id) {
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> firstPhoto(@PathVariable Long id) {
         Rental r = rentalRepository.findById(id).orElse(null);
         if (r == null || r.getPhotos() == null || r.getPhotos().isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -39,7 +44,17 @@ public class RentalPhotoController {
         return stream(r.getPhotos().get(0));
     }
 
-    private ResponseEntity<byte[]> stream(RentalPhoto p) {
+    private ResponseEntity<?> stream(RentalPhoto p) {
+        // Preferred path: image is in external object storage (Supabase). Redirect
+        // the browser straight to the CDN URL so bytes never flow through this service.
+        String fp = p.getFilePath();
+        if (fp != null && (fp.startsWith("http://") || fp.startsWith("https://"))) {
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(fp))
+                    .cacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePublic())
+                    .build();
+        }
+
         HttpHeaders headers = new HttpHeaders();
         headers.setCacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePublic());
 

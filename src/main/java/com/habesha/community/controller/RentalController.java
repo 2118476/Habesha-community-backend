@@ -1,5 +1,6 @@
 package com.habesha.community.controller;
 
+import com.habesha.community.dto.RentalDetailDto;
 import com.habesha.community.dto.RentalRequest;
 import com.habesha.community.dto.RentalUpdateRequest;
 import com.habesha.community.model.Rental;
@@ -8,6 +9,7 @@ import com.habesha.community.repository.RentalPhotoRepository;
 import com.habesha.community.repository.RentalRepository;
 import com.habesha.community.service.FileStorageService;
 import com.habesha.community.service.RentalService;
+import com.habesha.community.service.SupabaseStorageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +31,7 @@ public class RentalController {
     private final RentalRepository rentalRepository;
     private final RentalPhotoRepository rentalPhotoRepository;
     private final FileStorageService storage;
+    private final SupabaseStorageService supabaseStorage;
 
     // -------------------------------------------------------------------------
     // CREATE
@@ -45,11 +48,11 @@ public class RentalController {
     // Optional filter by ?city=
     // -------------------------------------------------------------------------
     @GetMapping
-    public ResponseEntity<List<Rental>> listRentals(
+    public ResponseEntity<List<RentalDetailDto>> listRentals(
             @RequestParam(name = "city", required = false) String city
     ) {
         return ResponseEntity.ok(
-                rentalService.listRentals(Optional.ofNullable(city))
+                rentalService.listRentalDtos(Optional.ofNullable(city))
         );
     }
 
@@ -57,8 +60,8 @@ public class RentalController {
     // READ (ONE)
     // -------------------------------------------------------------------------
     @GetMapping("/{id}")
-    public ResponseEntity<Rental> getRental(@PathVariable Long id) {
-        return ResponseEntity.ok(rentalService.getRental(id));
+    public ResponseEntity<RentalDetailDto> getRental(@PathVariable Long id) {
+        return ResponseEntity.ok(rentalService.getRentalDto(id));
     }
 
     // -------------------------------------------------------------------------
@@ -113,17 +116,26 @@ public class RentalController {
 
             String original = Objects.requireNonNullElse(mf.getOriginalFilename(), "image.jpg");
             String safe = storage.safeFilename(original);
-            Path savedPath = storage.saveStream(base, safe, mf.getInputStream());
+            String contentType = mf.getContentType() != null ? mf.getContentType() : "image/jpeg";
 
-            RentalPhoto photo = RentalPhoto.builder()
+            RentalPhoto.RentalPhotoBuilder pb = RentalPhoto.builder()
                     .filename(safe)
-                    .filePath(savedPath.toString())
                     .sortIndex(nextIndex++)
                     .rental(rental)
-                    .imageData(mf.getBytes())
-                    .contentType(mf.getContentType() != null ? mf.getContentType() : "image/jpeg")
-                    .build();
+                    .contentType(contentType);
 
+            if (supabaseStorage.isEnabled()) {
+                // Preferred: store bytes in Supabase Storage (keeps Postgres small),
+                // persist only the public URL. No DB blob, no local disk.
+                String publicUrl = supabaseStorage.upload("rental/" + id, safe, mf.getBytes(), contentType);
+                pb.filePath(publicUrl);
+            } else {
+                // Legacy fallback: local disk + DB blob.
+                Path savedPath = storage.saveStream(base, safe, mf.getInputStream());
+                pb.filePath(savedPath.toString()).imageData(mf.getBytes());
+            }
+
+            RentalPhoto photo = pb.build();
             rental.addPhoto(photo);
             rentalPhotoRepository.save(photo);
 
@@ -157,8 +169,11 @@ public class RentalController {
             return ResponseEntity.notFound().build();
         }
 
+        String storedPath = p.getFilePath();
         p.getRental().removePhoto(p);
         rentalPhotoRepository.delete(p);
+        // Best-effort cleanup of the object in Supabase (no-op for legacy disk/DB photos).
+        supabaseStorage.deleteByPublicUrl(storedPath);
 
         return ResponseEntity.noContent().build();
     }
@@ -168,6 +183,7 @@ public class RentalController {
     // GET /rentals/{id}/with-photos
     // -------------------------------------------------------------------------
     @GetMapping("/{id}/with-photos")
+    @Transactional(readOnly = true)
     public ResponseEntity<Map<String, Object>> getRentalWithPhotos(
             @PathVariable Long id
     ) {

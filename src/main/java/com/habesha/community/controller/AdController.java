@@ -8,6 +8,7 @@ import com.habesha.community.model.User;
 import com.habesha.community.repository.AdPhotoRepository;
 import com.habesha.community.service.AdService;
 import com.habesha.community.service.FileStorageService;
+import com.habesha.community.service.SupabaseStorageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,6 +18,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.Comparator;
@@ -39,6 +41,7 @@ public class AdController {
     private final AdService adService;
     private final AdPhotoRepository adPhotoRepository;
     private final FileStorageService storage;
+    private final SupabaseStorageService supabaseStorage;
 
     /* -------------------------------------------------------------------------
      * CREATE
@@ -269,19 +272,26 @@ public class AdController {
 
             String original = Objects.requireNonNullElse(mf.getOriginalFilename(), "image.jpg");
             String safe = storage.safeFilename(original);
-            Path savedPath = storage.saveStream(base, safe, mf.getInputStream());
+            String contentType = mf.getContentType() != null ? mf.getContentType() : "image/jpeg";
+            byte[] imageBytes = mf.getBytes();
 
-            System.out.println("File saved to: " + savedPath);
-
-            AdPhoto photo = AdPhoto.builder()
+            AdPhoto.AdPhotoBuilder pb = AdPhoto.builder()
                     .filename(safe)
-                    .filePath(savedPath.toString())
                     .sortIndex(nextIndex++)
                     .ad(ad)
-                    .imageData(mf.getBytes())
-                    .contentType(mf.getContentType() != null ? mf.getContentType() : "image/jpeg")
-                    .build();
+                    .contentType(contentType);
 
+            if (supabaseStorage.isEnabled()) {
+                String cdnUrl = supabaseStorage.upload("ad/" + id, original, imageBytes, contentType);
+                pb.filePath(cdnUrl);
+                System.out.println("File uploaded to Supabase: " + cdnUrl);
+            } else {
+                Path savedPath = storage.saveStream(base, safe, new ByteArrayInputStream(imageBytes));
+                pb.filePath(savedPath.toString()).imageData(imageBytes);
+                System.out.println("File saved to: " + savedPath);
+            }
+
+            AdPhoto photo = pb.build();
             System.out.println("Creating AdPhoto: filename=" + safe + ", sortIndex=" + photo.getSortIndex() + ", adId=" + ad.getId());
 
             try {
