@@ -31,7 +31,7 @@ public class ServiceOffer {
     private Long id;
 
     @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "provider_id")
     private User provider;
 

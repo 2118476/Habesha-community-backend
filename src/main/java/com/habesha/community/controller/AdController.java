@@ -326,6 +326,7 @@ public class AdController {
      * GET /ads/{id}/with-photos
      * ---------------------------------------------------------------------- */
     @GetMapping("/{id}/with-photos")
+    @Transactional(readOnly = true)
     public ResponseEntity<Map<String, Object>> getAdWithPhotos(@PathVariable Long id) {
         ClassifiedAd ad = adService.getAdByIdWithPhotos(id);
         if (ad == null) {

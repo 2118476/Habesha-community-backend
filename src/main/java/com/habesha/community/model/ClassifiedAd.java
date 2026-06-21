@@ -30,9 +30,9 @@ public class ClassifiedAd {
     private Long id;
 
     @JsonIgnore
-@ManyToOne(fetch = FetchType.LAZY)
-@JoinColumn(name = "poster_id")
-private User poster;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "poster_id")
+    private User poster;
 
     private String title;
 
@@ -49,6 +49,7 @@ private User poster;
 
     private LocalDateTime createdAt;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "ad", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sortIndex ASC")
     private List<AdPhoto> photos;
