@@ -32,6 +32,7 @@ public class AdPhoto {
     @Column(nullable = false)
     private Integer sortIndex;
 
+    @JsonIgnore
     @Lob
     @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.BINARY)
     @Column(name = "image_data", columnDefinition = "bytea")

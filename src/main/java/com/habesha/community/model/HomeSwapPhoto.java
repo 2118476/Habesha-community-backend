@@ -43,6 +43,7 @@ public class HomeSwapPhoto {
     @Column(length = 100)
     private String contentType;
 
+    @JsonIgnore
     @Lob
     @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.BINARY)
     @Column(name = "image_data", columnDefinition = "bytea")

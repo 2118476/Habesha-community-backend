@@ -1,5 +1,6 @@
 package com.habesha.community.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -41,6 +42,7 @@ public class User implements UserDetails {
     // If you used Cloudinary before, keep the URL field; we can store a local URL here.
     private String profileImageUrl;
 
+    @JsonIgnore
     private String password;
 
     @Column(length = 1024)
@@ -108,6 +110,7 @@ public class User implements UserDetails {
     private LocalDateTime lastActiveAt;
 
     // ===== Profile image blob (optional) =====
+    @JsonIgnore
     @Lob
     @JdbcTypeCode(SqlTypes.BINARY)
     @Column(name = "profile_image", columnDefinition = "bytea")

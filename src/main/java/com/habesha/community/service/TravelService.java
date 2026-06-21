@@ -45,7 +45,7 @@ public class TravelService {
                 .user(me)
                 .originCity(request.getOriginCity())
                 .destinationCity(request.getDestinationCity())
-                .travelDate(LocalDate.parse(request.getTravelDate())) // expects yyyy-MM-dd
+                .travelDate(parseTravelDate(request.getTravelDate()))
                 .message(request.getMessage())
                 .contactMethod(request.getContactMethod())
                 .build();
@@ -104,7 +104,7 @@ public class TravelService {
 
         post.setOriginCity(request.getOriginCity());
         post.setDestinationCity(request.getDestinationCity());
-        post.setTravelDate(LocalDate.parse(request.getTravelDate())); // yyyy-MM-dd
+        post.setTravelDate(parseTravelDate(request.getTravelDate()));
         post.setMessage(request.getMessage());
         post.setContactMethod(request.getContactMethod());
 
@@ -130,6 +130,20 @@ public class TravelService {
         }
 
         travelPostRepository.delete(post);
+    }
+
+    /* ====================== HELPERS ====================== */
+
+    /** Parse an ISO yyyy-MM-dd date, returning a clear 400 instead of a 500 on bad input. */
+    private LocalDate parseTravelDate(String raw) {
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalArgumentException("travelDate is required (format YYYY-MM-DD)");
+        }
+        try {
+            return LocalDate.parse(raw.trim());
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid travelDate '" + raw + "'. Use format YYYY-MM-DD");
+        }
     }
 
     /* ====================== MAPPER ====================== */
