@@ -234,7 +234,20 @@ public class SecurityConfig {
         log.info("CORS Configuration - Allowed Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
         log.info("CORS Configuration - Allow Credentials: true");
         
-        config.setAllowedOriginPatterns(originPatterns);
+        // Always include the native mobile app (Capacitor) webview origins so the
+        // Android/iOS build can reach the API without any extra env configuration.
+        //   - Android (androidScheme: https) -> https://localhost
+        //   - iOS                            -> capacitor://localhost
+        // These origins cannot be forged by a remote web page, so this is safe.
+        java.util.List<String> effectivePatterns = new java.util.ArrayList<>(originPatterns);
+        for (String nativeOrigin : List.of("https://localhost", "capacitor://localhost", "ionic://localhost")) {
+            if (!effectivePatterns.contains(nativeOrigin)) {
+                effectivePatterns.add(nativeOrigin);
+            }
+        }
+        log.info("CORS Configuration - Native app origins appended: {}", effectivePatterns);
+
+        config.setAllowedOriginPatterns(effectivePatterns);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("*"));
