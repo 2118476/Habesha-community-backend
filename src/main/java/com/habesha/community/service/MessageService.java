@@ -29,6 +29,10 @@ public class MessageService {
     @Autowired(required = false)
     private TwilioService twilioService;
 
+    // Best-effort push notifications (no-ops if Firebase isn't configured).
+    @Autowired(required = false)
+    private PushNotificationService pushNotificationService;
+
     /* ---------------- anti-abuse guardrails (tune as needed) -------------- */
     private static final int MAX_PER_MINUTE = 40;       // per sender
     private static final int MAX_PER_5S = 10;           // burst limit
@@ -133,6 +137,25 @@ public class MessageService {
                 && recipient.getPhone() != null
                 && !recipient.getPhone().isBlank()) {
             twilioService.sendSms(recipient.getPhone(), content);
+        }
+
+        // Fire a push notification to the recipient's devices (best-effort).
+        if (pushNotificationService != null) {
+            try {
+                String senderName = sender.getName();
+                if (senderName == null || senderName.isBlank()) {
+                    senderName = (sender.getUsername() != null && !sender.getUsername().isBlank())
+                            ? sender.getUsername() : "New message";
+                }
+                pushNotificationService.sendToUser(
+                        recipient.getId(),
+                        senderName,
+                        content,
+                        Map.of("type", "message", "userId", String.valueOf(sender.getId()))
+                );
+            } catch (Exception ignore) {
+                /* never let notifications break message delivery */
+            }
         }
     }
 

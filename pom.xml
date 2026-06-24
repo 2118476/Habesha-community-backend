@@ -119,6 +119,12 @@
             <artifactId>stripe-java</artifactId>
             <version>${stripe.version}</version>
         </dependency>
+        <!-- Firebase Admin SDK for sending push notifications (FCM) -->
+        <dependency>
+            <groupId>com.google.firebase</groupId>
+            <artifactId>firebase-admin</artifactId>
+            <version>9.4.1</version>
+        </dependency>
         <!-- MapStruct for DTO mapping (optional) -->
         <dependency>
             <groupId>org.mapstruct</groupId>
