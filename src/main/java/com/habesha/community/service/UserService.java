@@ -87,6 +87,7 @@ public class UserService {
                 .frozen(user.getFrozen())
                 .emailVerified(user.getEmailVerified())
                 .createdAt(user.getCreatedAt())
+                .bio(user.getBio())
                 .build();
     }
 

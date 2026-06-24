@@ -22,4 +22,5 @@ public class UserResponse {
     private Boolean frozen;
     private Boolean emailVerified;
     private LocalDateTime createdAt; // ✅ NEW FIELD - Member since date
+    private String bio;
 }
