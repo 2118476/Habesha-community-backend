@@ -26,6 +26,12 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     long countByRecipient_IdAndReadByRecipientFalse(Long recipientId);
 
     /**
+     * Number of messages a given sender has sent to a given recipient.
+     * Used to verify a genuine two-way conversation before allowing a review.
+     */
+    long countBySender_IdAndRecipient_Id(Long senderId, Long recipientId);
+
+    /**
      * Mark all messages from sender -> recipient as read.
      */
     @Transactional
