@@ -31,6 +31,9 @@ public class ServiceDetailDto {
     private boolean featured;
     private LocalDateTime createdAt;
 
+    /** URL to the service's cover image, or null when none was uploaded. */
+    private String imageUrl;
+
     /** Average star rating for the provider (null when no reviews yet). */
     private Double rating;
     /** Total number of reviews the provider has received. */

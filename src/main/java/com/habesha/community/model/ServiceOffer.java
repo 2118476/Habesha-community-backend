@@ -55,9 +55,32 @@ public class ServiceOffer {
 
     private LocalDateTime createdAt;
 
+    /** Cover image bytes, stored in the DB so they survive ephemeral disks. */
+    @JsonIgnore
+    @Lob
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.BINARY)
+    @Column(name = "image_data", columnDefinition = "bytea")
+    private byte[] imageData;
+
+    @JsonIgnore
+    @Column(name = "image_content_type", length = 100)
+    private String imageContentType;
+
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    /** True when this offer has a cover image stored. */
+    @JsonProperty("hasImage")
+    public boolean hasImage() {
+        return imageData != null && imageData.length > 0;
+    }
+
+    /** Stable URL the frontend can use to render the cover image. */
+    @JsonProperty("imageUrl")
+    public String getImageUrl() {
+        return (id != null && hasImage()) ? "/api/services/" + id + "/image" : null;
     }
 
     // Expose provider info to the frontend

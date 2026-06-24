@@ -100,11 +100,59 @@ public class ApiServiceController {
                 .tags(Collections.emptyList())
                 .featured(offer.isFeatured())
                 .createdAt(offer.getCreatedAt())
+                .imageUrl(offer.getImageUrl())
                 .rating(rating)
                 .reviewCount(reviewCount)
                 .postedBy(author)
                 .author(author)
                 .build();
+    }
+
+    /** Stream the service's cover image (public). */
+    @GetMapping("/{id}/image")
+    public ResponseEntity<byte[]> getServiceImage(@PathVariable Long id) {
+        ServiceOffer offer = serviceOfferRepository.findById(id).orElse(null);
+        if (offer == null || offer.getImageData() == null || offer.getImageData().length == 0) {
+            return ResponseEntity.notFound().build();
+        }
+        String mime = offer.getImageContentType() != null ? offer.getImageContentType() : "image/jpeg";
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.parseMediaType(mime))
+                .cacheControl(org.springframework.http.CacheControl
+                        .maxAge(java.time.Duration.ofDays(30)).cachePublic())
+                .body(offer.getImageData());
+    }
+
+    /** Alias used by the feed image resolver. */
+    @GetMapping("/{id}/photos/first")
+    public ResponseEntity<byte[]> getServiceFirstPhoto(@PathVariable Long id) {
+        return getServiceImage(id);
+    }
+
+    /** Upload / replace the cover image for a service (owner only). */
+    @PostMapping("/{id}/image")
+    public ResponseEntity<ServiceDetailDto> uploadServiceImage(
+            @PathVariable Long id,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        var me = userService.getCurrentUser().orElseThrow(() ->
+                new ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED));
+        ServiceOffer offer = serviceOfferRepository.findById(id).orElseThrow(() ->
+                new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Service not found"));
+        if (offer.getProvider() != null && !offer.getProvider().getId().equals(me.getId())) {
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN);
+        }
+        if (file == null || file.isEmpty()) {
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "No file uploaded");
+        }
+        try {
+            offer.setImageData(file.getBytes());
+            offer.setImageContentType(file.getContentType() != null ? file.getContentType() : "image/jpeg");
+        } catch (java.io.IOException e) {
+            throw new ResponseStatusException(
+                    org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR, "Could not read uploaded file");
+        }
+        serviceOfferRepository.save(offer);
+        return ResponseEntity.ok(toDto(offer));
     }
 
 
