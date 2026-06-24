@@ -24,7 +24,18 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void seed(String email, String name, Role role, String city, String phone, String rawPassword) {
-        if (userRepository.findByEmail(email).isPresent()) return;
+        // These are internal/system accounts that can't receive a verification
+        // email at their demo addresses, so they must be pre-verified to sign in.
+        var existing = userRepository.findByEmail(email);
+        if (existing.isPresent()) {
+            // Repair already-seeded accounts that were created before this change.
+            User u = existing.get();
+            if (!Boolean.TRUE.equals(u.getEmailVerified())) {
+                u.setEmailVerified(true);
+                userRepository.save(u);
+            }
+            return;
+        }
 
         String username = email.substring(0, email.indexOf('@'));
 
@@ -37,6 +48,7 @@ public class DataInitializer implements CommandLineRunner {
                 .city(city)
                 .phone(phone)
                 .active(true)
+                .emailVerified(true) // pre-verified system account (no real inbox)
                 .build();
 
         userRepository.save(u);
