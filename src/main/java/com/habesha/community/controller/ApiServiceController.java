@@ -4,6 +4,7 @@ import com.habesha.community.dto.ServiceDetailDto;
 import com.habesha.community.dto.UserSummaryDto;
 import com.habesha.community.model.ServiceOffer;
 import com.habesha.community.repository.ServiceOfferRepository;
+import com.habesha.community.repository.ServiceReviewRepository;
 import com.habesha.community.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -30,6 +31,7 @@ import java.util.stream.Collectors;
 public class ApiServiceController {
 
     private final ServiceOfferRepository serviceOfferRepository;
+    private final ServiceReviewRepository serviceReviewRepository;
     private final UserService userService;
 
     /**
@@ -73,6 +75,19 @@ public class ApiServiceController {
 
     private ServiceDetailDto toDto(ServiceOffer offer) {
         UserSummaryDto author = userService.toSummary(offer.getProvider());
+
+        // Review aggregates (so cards can show ★ rating + count without an extra call)
+        Double rating = null;
+        Long reviewCount = null;
+        if (offer.getProvider() != null && offer.getProvider().getId() != null) {
+            Long providerId = offer.getProvider().getId();
+            reviewCount = serviceReviewRepository.countByProvider_Id(providerId);
+            Double avg = serviceReviewRepository.averageRating(providerId);
+            if (avg != null) {
+                rating = Math.round(avg * 10.0) / 10.0; // one decimal place
+            }
+        }
+
         return ServiceDetailDto.builder()
                 .id(offer.getId())
                 .category(offer.getCategory())
@@ -85,6 +100,8 @@ public class ApiServiceController {
                 .tags(Collections.emptyList())
                 .featured(offer.isFeatured())
                 .createdAt(offer.getCreatedAt())
+                .rating(rating)
+                .reviewCount(reviewCount)
                 .postedBy(author)
                 .author(author)
                 .build();

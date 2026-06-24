@@ -30,6 +30,12 @@ public class ServiceDetailDto {
     private List<String> tags;
     private boolean featured;
     private LocalDateTime createdAt;
+
+    /** Average star rating for the provider (null when no reviews yet). */
+    private Double rating;
+    /** Total number of reviews the provider has received. */
+    private Long reviewCount;
+
     /**
      * Summary of the user who posted this service offer.  Clients
      * should prefer this field over the now deprecated {@code author}
