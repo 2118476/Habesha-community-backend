@@ -21,6 +21,8 @@ public class UserUpdateRequest {
     private String displayName;
     @Size(max = 255)
     private String location;
+    @Size(max = 40)
+    private String phone;
     @Size(max = 1024)
     private String avatarUrl;
     @Size(max = 1024)

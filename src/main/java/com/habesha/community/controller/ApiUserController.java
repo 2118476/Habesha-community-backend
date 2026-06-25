@@ -45,6 +45,7 @@ public class ApiUserController {
         UserProfileDto updated = userService.updateCurrentUser(
                 request.getDisplayName(),
                 request.getLocation(),
+                request.getPhone(),
                 request.getAvatarUrl(),
                 request.getBannerUrl(),
                 request.getBio(),

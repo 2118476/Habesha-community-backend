@@ -162,6 +162,7 @@ public class UserService {
     @Transactional
     public UserProfileDto updateCurrentUser(String displayName,
                                             String location,
+                                            String phone,
                                             String avatarUrl,
                                             String bannerUrl,
                                             String bio,
@@ -171,6 +172,7 @@ public class UserService {
         User user = getCurrentUser().orElseThrow(() -> new IllegalStateException("Not authenticated"));
         if (displayName != null && !displayName.isBlank()) user.setName(displayName);
         if (location != null)                               user.setCity(location);
+        if (phone != null)                                  user.setPhone(phone);
         if (avatarUrl != null && !avatarUrl.isBlank())      user.setProfileImageUrl(avatarUrl);
         if (bannerUrl != null && !bannerUrl.isBlank())      user.setBannerImageUrl(bannerUrl);
         if (bio != null)                                    user.setBio(bio);
