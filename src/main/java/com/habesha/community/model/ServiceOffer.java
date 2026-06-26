@@ -57,7 +57,6 @@ public class ServiceOffer {
 
     /** Cover image bytes, stored in the DB so they survive ephemeral disks. */
     @JsonIgnore
-    @Lob
     @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.BINARY)
     @Column(name = "image_data", columnDefinition = "bytea")
     private byte[] imageData;
