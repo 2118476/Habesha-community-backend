@@ -46,6 +46,27 @@ public class HomeSwap {
     @Column(length = 4000)
     private String description;
 
+    /* ---- Detail fields (all optional) ---- */
+    @Column(name = "home_type", length = 40)
+    private String homeType;
+
+    private Integer bedrooms;
+    private Integer bathrooms;
+
+    @Column(name = "floor_level", length = 60)
+    private String floorLevel;
+
+    private Boolean parking;
+
+    @Column(name = "garden_or_balcony")
+    private Boolean gardenOrBalcony;
+
+    @Column(name = "swap_window", length = 120)
+    private String swapWindow;
+
+    @Column(name = "preferred_location", length = 200)
+    private String preferredLocation;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

@@ -31,4 +31,12 @@ public class RentalRequest {
     private String contact;
     private List<String> images;
     private boolean featured;
+
+    /* ---- Optional detail fields ---- */
+    private Integer bedrooms;
+    private Integer bathrooms;
+    private BigDecimal deposit;
+    private Boolean billsIncluded;
+    private Boolean furnished;
+    private String availableFrom; // ISO yyyy-MM-dd; parsed in the service
 }

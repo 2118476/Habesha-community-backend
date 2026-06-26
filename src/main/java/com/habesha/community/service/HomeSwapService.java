@@ -97,6 +97,14 @@ public class HomeSwapService {
                 .title(req.getTitle().trim())
                 .location(req.getLocation().trim())
                 .description(req.getDescription() == null ? null : req.getDescription().trim())
+                .homeType(req.getHomeType())
+                .bedrooms(req.getBedrooms())
+                .bathrooms(req.getBathrooms())
+                .floorLevel(req.getFloorLevel())
+                .parking(req.getParking())
+                .gardenOrBalcony(req.getGardenOrBalcony())
+                .swapWindow(req.getSwapWindow())
+                .preferredLocation(req.getPreferredLocation())
                 .build();
 
         // make sure photos list is usable
@@ -124,6 +132,14 @@ public class HomeSwapService {
                 .title(req.getTitle().trim())
                 .location(req.getLocation().trim())
                 .description(req.getDescription() == null ? null : req.getDescription().trim())
+                .homeType(req.getHomeType())
+                .bedrooms(req.getBedrooms())
+                .bathrooms(req.getBathrooms())
+                .floorLevel(req.getFloorLevel())
+                .parking(req.getParking())
+                .gardenOrBalcony(req.getGardenOrBalcony())
+                .swapWindow(req.getSwapWindow())
+                .preferredLocation(req.getPreferredLocation())
                 .build();
 
         if (e.getPhotos() == null) e.setPhotos(new ArrayList<>());
@@ -341,6 +357,14 @@ public class HomeSwapService {
         dto.setLocation(e.getLocation());
         dto.setDescription(e.getDescription());
         dto.setCreatedAt(e.getCreatedAt());
+        dto.setHomeType(e.getHomeType());
+        dto.setBedrooms(e.getBedrooms());
+        dto.setBathrooms(e.getBathrooms());
+        dto.setFloorLevel(e.getFloorLevel());
+        dto.setParking(e.getParking());
+        dto.setGardenOrBalcony(e.getGardenOrBalcony());
+        dto.setSwapWindow(e.getSwapWindow());
+        dto.setPreferredLocation(e.getPreferredLocation());
 
         User user = e.getUser();
         if (user != null) {

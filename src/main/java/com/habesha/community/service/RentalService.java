@@ -40,6 +40,16 @@ public class RentalService {
                 .orElseThrow(() -> new IllegalStateException("No current user"));
     }
 
+    /** Parse an ISO yyyy-MM-dd string to LocalDate; null/blank/invalid -> null. */
+    private static java.time.LocalDate parseDate(String s) {
+        if (s == null || s.isBlank()) return null;
+        try {
+            return java.time.LocalDate.parse(s.trim());
+        } catch (Exception ignore) {
+            return null;
+        }
+    }
+
     /* ===================== CREATE ===================== */
 
     @Transactional
@@ -59,6 +69,12 @@ public class RentalService {
                                 .orElse(List.of())
                 )
                 .featured(request.isFeatured())
+                .bedrooms(request.getBedrooms())
+                .bathrooms(request.getBathrooms())
+                .deposit(request.getDeposit())
+                .billsIncluded(request.getBillsIncluded())
+                .furnished(request.getFurnished())
+                .availableFrom(parseDate(request.getAvailableFrom()))
                 .build();
 
         return rentalRepository.save(rental);

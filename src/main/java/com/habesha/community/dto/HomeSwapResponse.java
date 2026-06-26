@@ -15,6 +15,16 @@ public class HomeSwapResponse {
     private String userUsername;
     private String userAvatar;
 
+    /* ---- Detail fields ---- */
+    private String homeType;
+    private Integer bedrooms;
+    private Integer bathrooms;
+    private String floorLevel;
+    private Boolean parking;
+    private Boolean gardenOrBalcony;
+    private String swapWindow;
+    private String preferredLocation;
+
     private java.util.List<PhotoDto> photos;
 
 @lombok.Data

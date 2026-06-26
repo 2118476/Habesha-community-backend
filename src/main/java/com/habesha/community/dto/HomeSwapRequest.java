@@ -13,4 +13,10 @@ public class HomeSwapRequest {
     private String availableTo;
     private String homeType;      // "entire" | "room"
     private Integer bedrooms;
+    private Integer bathrooms;
+    private String floorLevel;
+    private Boolean parking;
+    private Boolean gardenOrBalcony;
+    private String swapWindow;
+    private String preferredLocation;
 }

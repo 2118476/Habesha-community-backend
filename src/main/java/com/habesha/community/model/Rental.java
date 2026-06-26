@@ -51,6 +51,19 @@ public class Rental {
     @Column(length = 100)
     private String contact;
 
+    /* ---- Detail fields (all optional) ---- */
+    private Integer bedrooms;
+    private Integer bathrooms;
+    private BigDecimal deposit;
+
+    @Column(name = "bills_included")
+    private Boolean billsIncluded;
+
+    private Boolean furnished;
+
+    @Column(name = "available_from")
+    private java.time.LocalDate availableFrom;
+
     /** Legacy list of external image URLs. Keep for backward compatibility. */
     @Builder.Default
     @ElementCollection
