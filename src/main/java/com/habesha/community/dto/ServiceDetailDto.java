@@ -27,6 +27,8 @@ public class ServiceDetailDto {
     private BigDecimal price;
     private String rateUnit;
     private String location;
+    /** How the service is delivered: IN_PERSON or ONLINE (null when unset). */
+    private String mode;
     private List<String> tags;
     private boolean featured;
     private LocalDateTime createdAt;

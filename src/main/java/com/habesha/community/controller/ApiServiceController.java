@@ -97,6 +97,7 @@ public class ApiServiceController {
                 .price(offer.getBasePrice())
                 .rateUnit("fixed")
                 .location(offer.getLocation())
+                .mode(offer.getMode() != null ? offer.getMode().name() : null)
                 .tags(Collections.emptyList())
                 .featured(offer.isFeatured())
                 .createdAt(offer.getCreatedAt())
