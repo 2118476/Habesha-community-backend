@@ -65,21 +65,31 @@ public class ServiceOffer {
     @Column(name = "image_content_type", length = 100)
     private String imageContentType;
 
+    /** Public URL of the cover image on Supabase Storage (preferred over the DB blob). */
+    @Column(name = "image_path", length = 1024)
+    private String imagePath;
+
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
     }
 
-    /** True when this offer has a cover image stored. */
+    /** True when this offer has a cover image stored (Supabase URL or DB blob). */
     @JsonProperty("hasImage")
     public boolean hasImage() {
-        return imageData != null && imageData.length > 0;
+        return (imagePath != null && !imagePath.isBlank())
+                || (imageData != null && imageData.length > 0);
     }
 
-    /** Stable URL the frontend can use to render the cover image. */
+    /**
+     * Stable URL the frontend can use to render the cover image. Prefers the
+     * Supabase Storage URL; falls back to the DB-blob streaming endpoint.
+     */
     @JsonProperty("imageUrl")
     public String getImageUrl() {
-        return (id != null && hasImage()) ? "/api/services/" + id + "/image" : null;
+        if (imagePath != null && !imagePath.isBlank()) return imagePath;
+        return (id != null && imageData != null && imageData.length > 0)
+                ? "/api/services/" + id + "/image" : null;
     }
 
     // Expose provider info to the frontend

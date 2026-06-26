@@ -33,6 +33,7 @@ public class ApiServiceController {
     private final ServiceOfferRepository serviceOfferRepository;
     private final ServiceReviewRepository serviceReviewRepository;
     private final UserService userService;
+    private final com.habesha.community.service.SupabaseStorageService supabaseStorage;
 
     /**
      * List available services with optional search and price filters.
@@ -132,6 +133,7 @@ public class ApiServiceController {
 
     /** Upload / replace the cover image for a service (owner only). */
     @PostMapping("/{id}/image")
+    @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<ServiceDetailDto> uploadServiceImage(
             @PathVariable Long id,
             @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
@@ -145,12 +147,31 @@ public class ApiServiceController {
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "No file uploaded");
         }
+        String contentType = file.getContentType() != null ? file.getContentType() : "image/jpeg";
         try {
-            offer.setImageData(file.getBytes());
-            offer.setImageContentType(file.getContentType() != null ? file.getContentType() : "image/jpeg");
+            if (supabaseStorage.isEnabled()) {
+                // Preferred path (same as rentals/avatars): store bytes on Supabase
+                // Storage and keep only the public URL — no Postgres blob.
+                String original = file.getOriginalFilename() != null ? file.getOriginalFilename() : "cover.jpg";
+                String publicUrl = supabaseStorage.upload("service/" + id, original, file.getBytes(), contentType);
+                // Replace any previous image (best-effort cleanup of the old object).
+                if (offer.getImagePath() != null) {
+                    supabaseStorage.deleteByPublicUrl(offer.getImagePath());
+                }
+                offer.setImagePath(publicUrl);
+                offer.setImageData(null);
+                offer.setImageContentType(contentType);
+            } else {
+                // Legacy fallback when Supabase is not configured: DB blob.
+                offer.setImageData(file.getBytes());
+                offer.setImageContentType(contentType);
+            }
         } catch (java.io.IOException e) {
             throw new ResponseStatusException(
                     org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR, "Could not read uploaded file");
+        } catch (RuntimeException e) {
+            throw new ResponseStatusException(
+                    org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR, "Image upload failed: " + e.getMessage());
         }
         serviceOfferRepository.save(offer);
         return ResponseEntity.ok(toDto(offer));
