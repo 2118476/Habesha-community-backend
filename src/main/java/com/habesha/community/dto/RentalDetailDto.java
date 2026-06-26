@@ -31,6 +31,13 @@ public class RentalDetailDto {
     private List<String> images;
     private LocalDateTime createdAt;
 
+    /* ---- Detail fields ---- */
+    private Integer bedrooms;
+    private Integer bathrooms;
+    private Boolean billsIncluded;
+    private Boolean furnished;
+    private java.time.LocalDate availableFrom;
+
     /** Owner id/name, surfaced directly so the frontend can resolve the poster. */
     private Long ownerId;
     private String ownerName;
