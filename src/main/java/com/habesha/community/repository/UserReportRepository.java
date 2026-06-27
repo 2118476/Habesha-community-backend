@@ -39,4 +39,13 @@ public interface UserReportRepository extends JpaRepository<UserReport, Long> {
      * Optional: list all reports involving a specific target user in last X minutes.
      */
     List<UserReport> findAllByTarget_IdAndCreatedAtAfter(Long targetId, LocalDateTime after);
+
+    /** How many reports (any status) exist against the same piece of content/user. */
+    long countByContentTypeAndContentId(String contentType, Long contentId);
+
+    /** Count reports created on/after the given time (for dashboard "reports today"). */
+    long countByCreatedAtAfter(LocalDateTime after);
+
+    /** Count reports in the given statuses (e.g. open queue size). */
+    long countByStatusIn(List<UserReportStatus> statuses);
 }

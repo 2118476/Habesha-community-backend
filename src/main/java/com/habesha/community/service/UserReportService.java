@@ -29,6 +29,7 @@ public class UserReportService {
     private final UserRepository userRepository;
     private final UserReportRepository userReportRepository;
     private final MessageService messageService;
+    private final AuditService auditService;
 
     /* ---------------- helpers ---------------- */
 
@@ -73,6 +74,13 @@ public class UserReportService {
 
             .reason(r.getReason())
             .status(r.getStatus())
+
+            .contentType(r.getContentType() != null ? r.getContentType() : "USER")
+            .contentId(r.getContentId() != null ? r.getContentId() : r.getTarget().getId())
+            .reportCount(userReportRepository.countByContentTypeAndContentId(
+                    r.getContentType() != null ? r.getContentType() : "USER",
+                    r.getContentId() != null ? r.getContentId() : r.getTarget().getId()))
+            .targetActive(r.getTarget() != null ? r.getTarget().isActive() : null)
 
             .createdAt(r.getCreatedAt())
             .updatedAt(r.getUpdatedAt())
@@ -126,23 +134,32 @@ public class UserReportService {
                 }
             });
 
+        // --- resolve what was reported (a user, or a piece of content) ---
+        String contentType = (req.getContentType() != null && !req.getContentType().isBlank())
+                ? req.getContentType().trim().toUpperCase()
+                : "USER";
+        Long contentId = req.getContentId() != null ? req.getContentId() : target.getId();
+
         // --- save new row ---
         UserReport saved = userReportRepository.save(
             UserReport.builder()
                 .reporter(reporter)
                 .target(target)
                 .reason(reasonClean)
+                .contentType(contentType)
+                .contentId(contentId)
                 .status(UserReportStatus.OPEN)
                 .build()
         );
 
         // --- DM every ADMIN and MODERATOR with details ---
         String alertText =
-            "🚩 USER REPORT\n" +
+            "🚩 NEW REPORT (" + contentType + ")\n" +
             "From: " + displayName(reporter) + " (id " + reporter.getId() + ")\n" +
             "Against: " + displayName(target)   + " (id " + target.getId()   + ")\n" +
+            ("USER".equals(contentType) ? "" : (contentType + " #" + contentId + "\n")) +
             "Reason: " + reasonClean + "\n" +
-            "Report ID: " + saved.getId();
+            "Open the Moderation dashboard to review. Report ID: " + saved.getId();
 
         for (User u : userRepository.findAll()) {
             if (isModeratorOrAdmin(u)) {
@@ -203,6 +220,10 @@ public class UserReportService {
 
         r.setStatus(body.getStatus()); // REVIEWED or CLOSED
         UserReport saved = userReportRepository.save(r);
+
+        auditService.record(me, "REPORT_" + saved.getStatus(), "REPORT", saved.getId(),
+                "Report on " + (saved.getContentType() == null ? "USER" : saved.getContentType())
+                        + " #" + saved.getContentId());
 
         return toResponse(saved);
     }

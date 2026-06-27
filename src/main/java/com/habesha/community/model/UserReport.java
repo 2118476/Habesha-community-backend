@@ -27,10 +27,18 @@ public class UserReport {
     @JoinColumn(name = "reporter_id")
     private User reporter;
 
-    /** The person being reported (the accused) */
+    /** The owner being acted on (the accused user, or the owner of reported content). */
     @ManyToOne(optional = false)
     @JoinColumn(name = "target_id")
     private User target;
+
+    /** What was reported: USER, RENTAL, SERVICE, EVENT, AD, TRAVEL, HOMESWAP, REVIEW. */
+    @Column(name = "content_type", length = 32)
+    private String contentType;
+
+    /** Id of the reported content (equals the user id when contentType = USER). */
+    @Column(name = "content_id")
+    private Long contentId;
 
     /** Free-text reason why they're being reported */
     @Column(length = 2000, nullable = false)

@@ -44,4 +44,16 @@ public class UserReportRequest {
 
     private String reason;
 
+
+
+    /** Optional: what was reported (USER, RENTAL, SERVICE, ...). Defaults to USER. */
+
+    private String contentType;
+
+
+
+    /** Optional: id of the reported content (defaults to targetUserId for USER). */
+
+    private Long contentId;
+
 }

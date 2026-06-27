@@ -75,6 +75,10 @@ public class User implements UserDetails {
     @Builder.Default
     private boolean active = true;
 
+    /** Why an admin/moderator suspended this account (shown to the user at login). */
+    @Column(name = "suspension_reason", length = 500)
+    private String suspensionReason;
+
     @Builder.Default
     @Column(name = "email_verified")
     private Boolean emailVerified = false;

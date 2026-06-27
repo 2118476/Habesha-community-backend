@@ -37,6 +37,18 @@ public class ReportController {
     }
 
     /**
+     * Generic report — for a user OR a piece of content.
+     * body: { "targetUserId": <owner id>, "contentType": "RENTAL", "contentId": 12, "reason": "..." }
+     */
+    @PostMapping
+    public ResponseEntity<Map<String, Object>> report(
+            @Valid @RequestBody UserReportRequest request
+    ) {
+        userReportService.submitReport(request);
+        return ResponseEntity.ok(Map.of("ok", true));
+    }
+
+    /**
      * List recent OPEN + REVIEWED reports for moderation.
      * Only for admins/moderators.
      */

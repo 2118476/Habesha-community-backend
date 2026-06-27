@@ -134,6 +134,14 @@ public class AuthenticationService {
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+        } catch (org.springframework.security.authentication.DisabledException e) {
+            // Suspended/banned account — surface the reason set by a moderator.
+            String reason = userRepository.findByEmail(request.getEmail())
+                    .map(User::getSuspensionReason)
+                    .filter(s -> s != null && !s.isBlank())
+                    .orElse("Your account has been suspended.");
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, reason);
         } catch (org.springframework.security.authentication.BadCredentialsException e) {
             throw e; // Let GlobalExceptionHandler return 401
         } catch (org.springframework.security.authentication.InternalAuthenticationServiceException e) {
