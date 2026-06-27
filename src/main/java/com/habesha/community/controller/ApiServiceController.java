@@ -193,29 +193,33 @@ public class ApiServiceController {
     /**
      * Update an existing ServiceOffer owned by the current user.
      */
-   @PutMapping("/{id}")
-public ResponseEntity<ServiceOffer> updateServiceOffer(@PathVariable Long id, @RequestBody ServiceOffer body) {
-    var me = userService.getCurrentUser().orElseThrow(() ->
-        new ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED));
-    var existing = serviceOfferRepository.findById(id).orElseThrow(() ->
-        new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND));
+    @PutMapping("/{id}")
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<ServiceOffer> updateServiceOffer(@PathVariable Long id, @RequestBody ServiceOffer body) {
+        var me = userService.getCurrentUser().orElseThrow(() ->
+            new ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED));
+        var existing = serviceOfferRepository.findById(id).orElseThrow(() ->
+            new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND));
 
-    // Only the provider can update
-    if (existing.getProvider() != null && !existing.getProvider().getId().equals(me.getId())) {
-        throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN);
+        // Only the provider can update
+        if (existing.getProvider() != null && !existing.getProvider().getId().equals(me.getId())) {
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN);
+        }
+
+        // Patch only the editable fields that were provided. Everything else —
+        // notably the cover image (imagePath/imageData), provider and createdAt —
+        // is left untouched, so editing text never wipes the media or the price.
+        if (body.getCategory() != null) existing.setCategory(body.getCategory());
+        if (body.getTitle() != null) existing.setTitle(body.getTitle());
+        if (body.getDescription() != null) existing.setDescription(body.getDescription());
+        if (body.getEstimatedTime() != null) existing.setEstimatedTime(body.getEstimatedTime());
+        if (body.getBasePrice() != null) existing.setBasePrice(body.getBasePrice());
+        if (body.getLocation() != null) existing.setLocation(body.getLocation());
+        if (body.getMode() != null) existing.setMode(body.getMode());
+
+        var saved = serviceOfferRepository.save(existing);
+        return ResponseEntity.ok(saved);
     }
-
-    body.setId(existing.getId());
-    // Preserve original provider if present, otherwise set to current user
-    if (existing.getProvider() != null) {
-        body.setProvider(existing.getProvider());
-    } else {
-        body.setProvider(me);
-    }
-
-    var saved = serviceOfferRepository.save(body);
-    return ResponseEntity.ok(saved);
-}
 
 
 }
